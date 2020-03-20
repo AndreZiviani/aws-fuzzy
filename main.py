@@ -24,9 +24,9 @@ def query(**kwargs):
 
     if len(kwargs['filter']) > 0:
         kwargs[
-            'filter'] = f"resourceType='{kwargs['service']}' AND {kwargs['filter']}"
+            'filter'] = f"resourceType like '{kwargs['service']}' AND {kwargs['filter']}"
     else:
-        kwargs['filter'] = f"resourceType='{kwargs['service']}'"
+        kwargs['filter'] = f"resourceType like '{kwargs['service']}'"
 
     expression = f"SELECT {kwargs['select']} WHERE {kwargs['filter']}"
     c = boto3.client('config')
