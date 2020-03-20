@@ -52,8 +52,6 @@ def query(**kwargs):
         o['Results'].extend(tmp['Results'])
 
     j = [json.loads(r) for r in o['Results']]
-    with open('/tmp/a', 'w') as f:
-        json.dump(j, f)
 
     pager = subprocess.Popen(['less', '-R', '-X', '-K'],
                              stdin=subprocess.PIPE,
