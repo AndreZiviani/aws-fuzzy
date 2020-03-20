@@ -28,11 +28,16 @@ def query(**kwargs):
     else:
         kwargs['filter'] = f"resourceType like '{kwargs['service']}'"
 
-    expression = f"SELECT {kwargs['select']} WHERE {kwargs['filter']}"
+    kwargs[
+        'expression'] = f"SELECT {kwargs['select']} WHERE {kwargs['filter']}"
+
+    if kwargs['debug']:
+        print(kwargs)
+
     c = boto3.client('config')
 
     o = c.select_aggregate_resource_config(
-        Expression=expression,
+        Expression=kwargs['expression'],
         ConfigurationAggregatorName='linx-digital-inventory-assets',
         Limit=100)
 
@@ -51,6 +56,8 @@ def query(**kwargs):
 
 
 @main.command()
+@click.option(
+    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
 @click.option(
     '-a',
     '--account',
@@ -71,6 +78,8 @@ def acm(**kwargs):
 
 @main.command()
 @click.option(
+    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
+@click.option(
     '-a',
     '--account',
     default='all',
@@ -89,6 +98,8 @@ def apigw(**kwargs):
 
 
 @main.command()
+@click.option(
+    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
 @click.option(
     '-a',
     '--account',
@@ -109,6 +120,8 @@ def apigwv2(**kwargs):
 
 @main.command()
 @click.option(
+    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
+@click.option(
     '-a',
     '--account',
     default='all',
@@ -127,6 +140,8 @@ def asg(**kwargs):
 
 
 @main.command()
+@click.option(
+    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
 @click.option(
     '-a',
     '--account',
@@ -147,6 +162,8 @@ def cf(**kwargs):
 
 @main.command()
 @click.option(
+    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
+@click.option(
     '-a',
     '--account',
     default='all',
@@ -165,6 +182,8 @@ def dynamodb(**kwargs):
 
 
 @main.command()
+@click.option(
+    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
 @click.option(
     '-a',
     '--account',
@@ -185,6 +204,8 @@ def ec2(**kwargs):
 
 @main.command()
 @click.option(
+    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
+@click.option(
     '-a',
     '--account',
     default='all',
@@ -203,6 +224,8 @@ def iam(**kwargs):
 
 
 @main.command(name="lambda")  # lambda is a reserved name in python
+@click.option(
+    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
 @click.option(
     '-a',
     '--account',
@@ -223,6 +246,8 @@ def awslambda(**kwargs):
 
 @main.command()
 @click.option(
+    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
+@click.option(
     '-a',
     '--account',
     default='all',
@@ -241,6 +266,8 @@ def rds(**kwargs):
 
 
 @main.command()
+@click.option(
+    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
 @click.option(
     '-a',
     '--account',
