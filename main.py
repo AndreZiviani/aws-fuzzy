@@ -41,6 +41,16 @@ def query(**kwargs):
         ConfigurationAggregatorName='linx-digital-inventory-assets',
         Limit=100)
 
+    tmp = o
+    while 'NextToken' in tmp:
+        tmp = c.select_aggregate_resource_config(
+            Expression=kwargs['expression'],
+            ConfigurationAggregatorName='linx-digital-inventory-assets',
+            Limit=100,
+            NextToken=tmp['NextToken'])
+
+        o['Results'].extend(tmp['Results'])
+
     j = [json.loads(r) for r in o['Results']]
     with open('/tmp/a', 'w') as f:
         json.dump(j, f)
