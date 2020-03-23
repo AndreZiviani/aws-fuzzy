@@ -6,14 +6,14 @@ import click
 @click.group("inventory")
 @click.pass_context
 def cli(ctx, **kwargs):
-    """ Get all resources from AWS service """
+    """Get all resources from AWS service"""
 
 
 @cli.command()
 @common_params
 @pass_environment
 def acm(ctx, **kwargs):
-    """AWS Certificate Manager (ACM) resources """
+    """AWS Certificate Manager (ACM) resources"""
     kwargs['service'] = "AWS::ACM::%"
     query(ctx, **kwargs)
 
@@ -22,7 +22,7 @@ def acm(ctx, **kwargs):
 @common_params
 @pass_environment
 def apigw(ctx, **kwargs):
-    """API Gateway (APIGW) resources """
+    """API Gateway (APIGW) resources"""
     kwargs['service'] = "AWS::ApiGateway::%"
     query(ctx, **kwargs)
 
@@ -31,7 +31,7 @@ def apigw(ctx, **kwargs):
 @common_params
 @pass_environment
 def apigwv2(ctx, **kwargs):
-    """API Gateway V2 (APIGW V2) resources """
+    """API Gateway V2 (APIGW V2) resources"""
     kwargs['service'] = "AWS::ApiGatewayV2::%"
     query(ctx, **kwargs)
 
@@ -40,7 +40,7 @@ def apigwv2(ctx, **kwargs):
 @common_params
 @pass_environment
 def asg(ctx, **kwargs):
-    """Auto Scaling Groups (ASG) resources """
+    """Auto Scaling Groups (ASG) resources"""
     kwargs['service'] = "AWS::AutoScaling::%"
     query(ctx, **kwargs)
 
@@ -49,7 +49,7 @@ def asg(ctx, **kwargs):
 @common_params
 @pass_environment
 def cf(ctx, **kwargs):
-    """CloudFront (CF) resources """
+    """CloudFront (CF) resources"""
     kwargs['service'] = "AWS::CloudFront::%"
     query(ctx, **kwargs)
 
@@ -58,7 +58,7 @@ def cf(ctx, **kwargs):
 @common_params
 @pass_environment
 def dynamodb(ctx, **kwargs):
-    """DynamoDB resources """
+    """DynamoDB resources"""
     kwargs['service'] = "AWS::DynamoDB::%"
     query(ctx, **kwargs)
 
@@ -67,7 +67,7 @@ def dynamodb(ctx, **kwargs):
 @common_params
 @pass_environment
 def ec2(ctx, **kwargs):
-    """Elastic Compute Cloud (EC2) resources """
+    """Elastic Compute Cloud (EC2) resources"""
     kwargs['service'] = "AWS::EC2::%"
     query(ctx, **kwargs)
 
@@ -76,7 +76,7 @@ def ec2(ctx, **kwargs):
 @common_params
 @pass_environment
 def iam(ctx, **kwargs):
-    """Identity and Access Management (IAM) resources """
+    """Identity and Access Management (IAM) resources"""
     kwargs['service'] = "AWS::IAM::%"
     query(ctx, **kwargs)
 
@@ -85,7 +85,7 @@ def iam(ctx, **kwargs):
 @common_params
 @pass_environment
 def awslambda(ctx, **kwargs):
-    """Lambda resources """
+    """Lambda resources"""
     kwargs['service'] = "AWS::Lambda::%"
     query(ctx, **kwargs)
 
@@ -94,7 +94,7 @@ def awslambda(ctx, **kwargs):
 @common_params
 @pass_environment
 def rds(ctx, **kwargs):
-    """Relational Database Service (RDS) resources """
+    """Relational Database Service (RDS) resources"""
     kwargs['service'] = "AWS::RDS::%"
     query(ctx, **kwargs)
 
@@ -103,6 +103,6 @@ def rds(ctx, **kwargs):
 @common_params
 @pass_environment
 def s3(ctx, **kwargs):
-    """Simple Storage Service (S3) resources """
+    """Simple Storage Service (S3) resources"""
     kwargs['service'] = "AWS::S3::%"
     query(ctx, **kwargs)

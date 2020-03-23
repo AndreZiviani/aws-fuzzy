@@ -69,7 +69,7 @@ def query(ctx, **kwargs):
     if 'select' not in kwargs:
         kwargs['select'] = "resourceId, accountId, configuration, tags"
 
-    if len(kwargs['filter']) > 0:
+    if kwargs['filter'] != "''":
         kwargs[
             'filter'] = f"resourceType like '{kwargs['service']}' AND {kwargs['filter']}"
     else:
