@@ -78,7 +78,7 @@ def query(ctx, **kwargs):
     kwargs[
         'expression'] = f"SELECT {kwargs['select']} WHERE {kwargs['filter']}"
 
-    ctx.vlog(kwargs)
+    ctx.vlog(f"kwargs: {kwargs}")
 
     c = boto3.client('config')
 

@@ -36,7 +36,7 @@ def cli(ctx, **kwargs):
         kwargs['filter'] = f"{f}"
 
     ret = query(ctx, **kwargs)
-    ctx.vlog(ret)
+    ctx.vlog(f"Return form query function: {ret}")
     out = []
     for i in ret:
         name = "<unnamed>"
@@ -45,9 +45,6 @@ def cli(ctx, **kwargs):
             tags.append(t['tag'])
             if t["key"] == "Name":
                 name = t["value"]
-        ctx.vlog(
-            f'{name}\t{i["configuration"]["privateIpAddress"]}\t{i["accountId"]}\t{tags}'
-        )
         out.append(
             f'{name}\t{i["configuration"]["privateIpAddress"]}\t{i["accountId"]}\t{tags}'
         )
