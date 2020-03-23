@@ -119,16 +119,9 @@ def query(ctx, **kwargs):
     j = [json.loads(r) for r in o['Results']]
 
     if kwargs['pager']:
-
-        pager = subprocess.Popen(['less', '-R', '-X', '-K'],
-                                 stdin=subprocess.PIPE,
-                                 stdout=sys.stdout)
-        pager.stdin.write(
+        click.echo_via_pager(
             highlight(
-                json.dumps(j, indent=4), JsonLexer(),
-                TerminalFormatter()).encode())
-        pager.stdin.close()
-        pager.wait()
+                json.dumps(j, indent=4), JsonLexer(), TerminalFormatter()))
 
     return j
 

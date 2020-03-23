@@ -36,6 +36,10 @@ def cli(ctx, **kwargs):
         kwargs['filter'] = f"{f}"
 
     ret = query(ctx, **kwargs)
+
+    if kwargs['pager']:
+        return
+
     ctx.vlog(f"Return form query function: {ret}")
     out = []
     for i in ret:
