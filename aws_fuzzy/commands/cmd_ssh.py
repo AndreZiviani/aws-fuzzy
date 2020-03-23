@@ -53,6 +53,10 @@ def cli(ctx, **kwargs):
         )
 
     sel = iterfzf(out)
+
+    if sel is None:
+        return
+
     name, ip, account, tags = sel.split('\t')
 
     if kwargs['key'] != "''":
