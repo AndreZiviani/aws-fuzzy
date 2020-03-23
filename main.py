@@ -10,6 +10,8 @@ from pygments.formatters import TerminalFormatter
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
+log_level = "normal"
+
 
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.version_option(version='1.0.0')
@@ -17,7 +19,14 @@ def main():
     pass
 
 
+def debug_log(msg):
+    if log_level == "debug":
+        print(msg)
+
 def query(**kwargs):
+    global log_level
+    if kwargs['debug']:
+        log_level = 'debug'
 
     if 'select' not in kwargs:
         kwargs['select'] = "resourceId, accountId, configuration, tags"
@@ -31,8 +40,7 @@ def query(**kwargs):
     kwargs[
         'expression'] = f"SELECT {kwargs['select']} WHERE {kwargs['filter']}"
 
-    if kwargs['debug']:
-        print(kwargs)
+    debug_log(kwargs)
 
     c = boto3.client('config')
 
