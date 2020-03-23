@@ -82,23 +82,43 @@ def query(ctx, **kwargs):
 
     c = boto3.client('config')
 
-    o = c.select_aggregate_resource_config(
-        Expression=kwargs['expression'],
-        ConfigurationAggregatorName='linx-digital-inventory-assets',
-        Limit=100)
-
-    tmp = o
-    while 'NextToken' in tmp:
-        tmp = c.select_aggregate_resource_config(
+    if kwargs['limit'] <= 100:
+        o = c.select_aggregate_resource_config(
             Expression=kwargs['expression'],
             ConfigurationAggregatorName='linx-digital-inventory-assets',
-            Limit=100,
-            NextToken=tmp['NextToken'])
+            Limit=kwargs['limit'])
+    else:
+        it = kwargs['limit'] / 100
+        mod = kwargs['limit'] % 100
 
-        o['Results'].extend(tmp['Results'])
+        o = c.select_aggregate_resource_config(
+            Expression=kwargs['expression'],
+            ConfigurationAggregatorName='linx-digital-inventory-assets',
+            Limit=100)
+
+        tmp = o
+        i = 1
+        while 'NextToken' in tmp and i < it:
+            tmp = c.select_aggregate_resource_config(
+                Expression=kwargs['expression'],
+                ConfigurationAggregatorName='linx-digital-inventory-assets',
+                Limit=100,
+                NextToken=tmp['NextToken'])
+
+            o['Results'].extend(tmp['Results'])
+
+        if mod > 0:
+            tmp = c.select_aggregate_resource_config(
+                Expression=kwargs['expression'],
+                ConfigurationAggregatorName='linx-digital-inventory-assets',
+                Limit=mod,
+                NextToken=tmp['NextToken'])
+
+            o['Results'].extend(tmp['Results'])
+
+    j = [json.loads(r) for r in o['Results']]
 
     if kwargs['pager']:
-        j = [json.loads(r) for r in o['Results']]
 
         pager = subprocess.Popen(['less', '-R', '-X', '-K'],
                                  stdin=subprocess.PIPE,
@@ -110,7 +130,7 @@ def query(ctx, **kwargs):
         pager.stdin.close()
         pager.wait()
 
-    return o
+    return j
 
 
 if __name__ == '__main__':
