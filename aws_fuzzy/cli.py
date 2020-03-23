@@ -63,7 +63,7 @@ class ComplexCLI(click.MultiCommand):
 @click.command(cls=ComplexCLI, context_settings=CONTEXT_SETTINGS)
 @click.option("-v", "--verbose", is_flag=True, help="Enables verbose mode.")
 @pass_environment
-@click.version_option(version='1.0.0')
+@click.version_option(version='0.0.1')
 def cli(ctx, verbose):
     ctx.verbose = verbose
 
