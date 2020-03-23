@@ -4,6 +4,7 @@ import click
 import json
 import subprocess
 import sys
+import functools
 from pygments import highlight
 from pygments.lexers import JsonLexer
 from pygments.formatters import TerminalFormatter
@@ -22,6 +23,32 @@ def main():
 def debug_log(msg):
     if log_level == "debug":
         print(msg)
+
+
+def common_params(func):
+    @click.option(
+        '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
+    @click.option(
+        '-a',
+        '--account',
+        default='all',
+        help='Filter by accountid, defaults to every account')
+    @click.option(
+        '-r',
+        '--region',
+        default='all',
+        help='Filter by region, defaults to every region')
+    @click.option(
+        '-f',
+        '--filter',
+        default='',
+        help='Use a custom query to filter results')
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+
+    return wrapper
+
 
 def query(**kwargs):
     global log_level
@@ -72,20 +99,7 @@ def query(**kwargs):
 
 
 @main.command()
-@click.option(
-    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
-@click.option(
-    '-a',
-    '--account',
-    default='all',
-    help='Filter by accountid, defaults to every account')
-@click.option(
-    '-r',
-    '--region',
-    default='all',
-    help='Filter by region, defaults to every region')
-@click.option(
-    '-f', '--filter', default='', help='Use a custom query to filter results')
+@common_params
 def acm(**kwargs):
     """ Get all AWS Certificate Manager (ACM) resources """
     kwargs['service'] = "AWS::ACM::Certificate"
@@ -93,20 +107,7 @@ def acm(**kwargs):
 
 
 @main.command()
-@click.option(
-    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
-@click.option(
-    '-a',
-    '--account',
-    default='all',
-    help='Filter by accountid, defaults to every account')
-@click.option(
-    '-r',
-    '--region',
-    default='all',
-    help='Filter by region, defaults to every region')
-@click.option(
-    '-f', '--filter', default='', help='Use a custom query to filter results')
+@common_params
 def apigw(**kwargs):
     """ Get all API Gateway (APIGW) resources """
     kwargs['service'] = "AWS::ApiGateway::%"
@@ -114,20 +115,7 @@ def apigw(**kwargs):
 
 
 @main.command()
-@click.option(
-    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
-@click.option(
-    '-a',
-    '--account',
-    default='all',
-    help='Filter by accountid, defaults to every account')
-@click.option(
-    '-r',
-    '--region',
-    default='all',
-    help='Filter by region, defaults to every region')
-@click.option(
-    '-f', '--filter', default='', help='Use a custom query to filter results')
+@common_params
 def apigwv2(**kwargs):
     """ Get all API Gateway V2 (APIGW V2) resources """
     kwargs['service'] = "AWS::ApiGatewayV2::%"
@@ -135,20 +123,7 @@ def apigwv2(**kwargs):
 
 
 @main.command()
-@click.option(
-    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
-@click.option(
-    '-a',
-    '--account',
-    default='all',
-    help='Filter by accountid, defaults to every account')
-@click.option(
-    '-r',
-    '--region',
-    default='all',
-    help='Filter by region, defaults to every region')
-@click.option(
-    '-f', '--filter', default='', help='Use a custom query to filter results')
+@common_params
 def asg(**kwargs):
     """ Get all Auto Scaling Groups (ASG) resources """
     kwargs['service'] = "AWS::AutoScaling::%"
@@ -156,20 +131,7 @@ def asg(**kwargs):
 
 
 @main.command()
-@click.option(
-    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
-@click.option(
-    '-a',
-    '--account',
-    default='all',
-    help='Filter by accountid, defaults to every account')
-@click.option(
-    '-r',
-    '--region',
-    default='all',
-    help='Filter by region, defaults to every region')
-@click.option(
-    '-f', '--filter', default='', help='Use a custom query to filter results')
+@common_params
 def cf(**kwargs):
     """ Get all CloudFront (CF) resources """
     kwargs['service'] = "AWS::CloudFront::%"
@@ -177,20 +139,7 @@ def cf(**kwargs):
 
 
 @main.command()
-@click.option(
-    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
-@click.option(
-    '-a',
-    '--account',
-    default='all',
-    help='Filter by accountid, defaults to every account')
-@click.option(
-    '-r',
-    '--region',
-    default='all',
-    help='Filter by region, defaults to every region')
-@click.option(
-    '-f', '--filter', default='', help='Use a custom query to filter results')
+@common_params
 def dynamodb(**kwargs):
     """ Get all DynamoDB resources """
     kwargs['service'] = "AWS::DynamoDB::%"
@@ -198,20 +147,7 @@ def dynamodb(**kwargs):
 
 
 @main.command()
-@click.option(
-    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
-@click.option(
-    '-a',
-    '--account',
-    default='all',
-    help='Filter by accountid, defaults to every account')
-@click.option(
-    '-r',
-    '--region',
-    default='all',
-    help='Filter by region, defaults to every region')
-@click.option(
-    '-f', '--filter', default='', help='Use a custom query to filter results')
+@common_params
 def ec2(**kwargs):
     """ Get all Elastic Compute Cloud (EC2) resources """
     kwargs['service'] = "AWS::EC2::%"
@@ -219,20 +155,7 @@ def ec2(**kwargs):
 
 
 @main.command()
-@click.option(
-    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
-@click.option(
-    '-a',
-    '--account',
-    default='all',
-    help='Filter by accountid, defaults to every account')
-@click.option(
-    '-r',
-    '--region',
-    default='all',
-    help='Filter by region, defaults to every region')
-@click.option(
-    '-f', '--filter', default='', help='Use a custom query to filter results')
+@common_params
 def iam(**kwargs):
     """ Get all Identity and Access Management (IAM) resources """
     kwargs['service'] = "AWS::IAM::%"
@@ -240,20 +163,7 @@ def iam(**kwargs):
 
 
 @main.command(name="lambda")  # lambda is a reserved name in python
-@click.option(
-    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
-@click.option(
-    '-a',
-    '--account',
-    default='all',
-    help='Filter by accountid, defaults to every account')
-@click.option(
-    '-r',
-    '--region',
-    default='all',
-    help='Filter by region, defaults to every region')
-@click.option(
-    '-f', '--filter', default='', help='Use a custom query to filter results')
+@common_params
 def awslambda(**kwargs):
     """ Get all Lambda resources """
     kwargs['service'] = "AWS::Lambda::%"
@@ -261,20 +171,7 @@ def awslambda(**kwargs):
 
 
 @main.command()
-@click.option(
-    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
-@click.option(
-    '-a',
-    '--account',
-    default='all',
-    help='Filter by accountid, defaults to every account')
-@click.option(
-    '-r',
-    '--region',
-    default='all',
-    help='Filter by region, defaults to every region')
-@click.option(
-    '-f', '--filter', default='', help='Use a custom query to filter results')
+@common_params
 def rds(**kwargs):
     """ Get all Relational Database Service (RDS) resources """
     kwargs['service'] = "AWS::RDS::%"
@@ -282,20 +179,7 @@ def rds(**kwargs):
 
 
 @main.command()
-@click.option(
-    '-d/-nd', '--debug/--no-debug', default=False, help='Enable debug')
-@click.option(
-    '-a',
-    '--account',
-    default='all',
-    help='Filter by accountid, defaults to every account')
-@click.option(
-    '-r',
-    '--region',
-    default='all',
-    help='Filter by region, defaults to every region')
-@click.option(
-    '-f', '--filter', default='', help='Use a custom query to filter results')
+@common_params
 def s3(**kwargs):
     """ Get all Simple Storage Service (S3) resources """
     kwargs['service'] = "AWS::S3::%"
