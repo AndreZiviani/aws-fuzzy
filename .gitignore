@@ -108,3 +108,6 @@ venv.bak/
 # Ansible
 *.retry
 null
+
+# Vim
+*.swp
