@@ -6,8 +6,10 @@ import subprocess
 import sys
 import functools
 import os
+from pprint import pformat
 from pygments import highlight
 from pygments.lexers import JsonLexer
+from pygments.lexers import PythonLexer
 from pygments.formatters import TerminalFormatter
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -21,8 +23,10 @@ class Environment(object):
     def log(self, msg, *args):
         """Logs a message to stderr."""
         if args:
-            msg %= args
-        click.echo(msg, file=sys.stderr)
+            msg = msg.format(args)
+        click.echo(
+            highlight(pformat(msg), PythonLexer(), TerminalFormatter()),
+            file=sys.stderr)
 
     def vlog(self, msg, *args):
         """Logs a message to stderr only if verbose is enabled."""
@@ -78,7 +82,8 @@ def query(ctx, **kwargs):
     kwargs[
         'expression'] = f"SELECT {kwargs['select']} WHERE {kwargs['filter']}"
 
-    ctx.vlog(f"kwargs: {kwargs}")
+    ctx.vlog("kwargs:")
+    ctx.vlog(kwargs)
 
     c = boto3.client('config')
 

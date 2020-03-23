@@ -40,7 +40,8 @@ def cli(ctx, **kwargs):
     if kwargs['pager']:
         return
 
-    ctx.vlog(f"Return form query function: {ret}")
+    ctx.vlog("Return form query function:")
+    ctx.vlog(ret)
     out = []
     for i in ret:
         name = "<unnamed>"
@@ -72,7 +73,8 @@ def cli(ctx, **kwargs):
 
     ssh_command = f"ssh {key} {user} {ip}"
 
-    ctx.vlog(f"Executing: {ssh_command}")
+    ctx.vlog("Executing:")
+    ctx.vlog(ssh_command)
 
     subprocess.call(
         ssh_command, shell=True, executable=os.getenv('SHELL', '/bin/bash'))
