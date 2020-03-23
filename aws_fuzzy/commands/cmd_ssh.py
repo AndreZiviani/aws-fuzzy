@@ -1,4 +1,5 @@
-from aws_fuzzy.cli import pass_environment, query
+from aws_fuzzy.cli import pass_environment
+from aws_fuzzy.query import query
 from .common import common_params
 
 import click
