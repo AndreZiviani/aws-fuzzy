@@ -1,6 +1,7 @@
 import boto3
 import json
 import click
+import sys
 
 from pygments import highlight
 from pygments.lexers import JsonLexer
@@ -14,15 +15,19 @@ def do_query(ctx,
              Limit=None):
     c = boto3.client('config')
 
-    if Limit <= 100:
+    if Limit <= 100 and Limit > 0:
         o = c.select_aggregate_resource_config(
             Expression=Expression,
             ConfigurationAggregatorName=ConfigurationAggregatorName,
             Limit=Limit)
         t = len(o['Results'])
     else:  # Iterate through pages until Limit is reached or end of results
-        it = Limit / 100
-        mod = Limit % 100
+        if Limit > 0:
+            it = Limit / 100
+            mod = Limit % 100
+        else:
+            it = sys.maxsize
+            mod = 0
 
         o = c.select_aggregate_resource_config(
             Expression=Expression,
