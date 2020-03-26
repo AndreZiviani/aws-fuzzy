@@ -74,13 +74,18 @@ def do_query(ctx,
 def query(ctx, **kwargs):
 
     if 'select' not in kwargs:
-        kwargs['select'] = "resourceId, accountId, configuration, tags"
+        kwargs[
+            'select'] = "resourceId, accountId, awsRegion, configuration, tags"
 
     if kwargs['filter'] != "''":
         kwargs[
             'filter'] = f"resourceType like '{kwargs['service']}' AND {kwargs['filter']}"
     else:
         kwargs['filter'] = f"resourceType like '{kwargs['service']}'"
+        if kwargs['account'] != 'all':
+            kwargs['filter'] += f" AND accountId like '{kwargs['account']}'"
+        if kwargs['region'] != 'all':
+            kwargs['filter'] += f" AND awsRegion like '{kwargs['account']}'"
 
     kwargs[
         'expression'] = f"SELECT {kwargs['select']} WHERE {kwargs['filter']}"
