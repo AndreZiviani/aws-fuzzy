@@ -8,7 +8,10 @@ from pygments.lexers import PythonLexer
 from pygments.formatters import TerminalFormatter
 
 
-def do_query(Expression=None, ConfigurationAggregatorName=None, Limit=None):
+def do_query(ctx,
+             Expression=None,
+             ConfigurationAggregatorName=None,
+             Limit=None):
     c = boto3.client('config')
 
     if Limit <= 100:
@@ -16,6 +19,7 @@ def do_query(Expression=None, ConfigurationAggregatorName=None, Limit=None):
             Expression=Expression,
             ConfigurationAggregatorName=ConfigurationAggregatorName,
             Limit=Limit)
+        t = len(o['Results'])
     else:  # Iterate through pages until Limit is reached or end of results
         it = Limit / 100
         mod = Limit % 100
@@ -27,6 +31,9 @@ def do_query(Expression=None, ConfigurationAggregatorName=None, Limit=None):
 
         tmp = o
         i = 1
+        r = len(o['Results'])
+        t = r
+        ctx.vlog(f'Got {r} results')
         while 'NextToken' in tmp and i < it:
             tmp = c.select_aggregate_resource_config(
                 Expression=Expression,
@@ -35,6 +42,10 @@ def do_query(Expression=None, ConfigurationAggregatorName=None, Limit=None):
                 NextToken=tmp['NextToken'])
 
             o['Results'].extend(tmp['Results'])
+            i += 1
+            r = len(tmp['Results'])
+            t += r
+            ctx.vlog(f'Got {r} results')
 
         if mod > 0:
             tmp = c.select_aggregate_resource_config(
@@ -44,6 +55,11 @@ def do_query(Expression=None, ConfigurationAggregatorName=None, Limit=None):
                 NextToken=tmp['NextToken'])
 
             o['Results'].extend(tmp['Results'])
+            r = len(tmp['Results'])
+            t += r
+            ctx.vlog(f'Got {r} results')
+
+    ctx.vlog(f'Got a total of {t} results')
 
     j = [json.loads(r) for r in o['Results']]
 
@@ -67,7 +83,7 @@ def query(ctx, **kwargs):
     ctx.vlog("kwargs:")
     ctx.vlog(kwargs)
 
-    ret = do_query(kwargs['expression'], 'linx-digital-inventory-assets',
+    ret = do_query(ctx, kwargs['expression'], 'linx-digital-inventory-assets',
                    kwargs['limit'])
 
     if kwargs['pager']:
