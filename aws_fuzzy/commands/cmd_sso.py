@@ -13,6 +13,7 @@ import json
 import boto3
 from iterfzf import iterfzf
 from os.path import expanduser
+from subprocess import run
 
 AWS_DIR = expanduser("~") + "/.aws"
 SSO_CRED_DIR = AWS_DIR + "/sso/cache"
@@ -60,7 +61,6 @@ def get_sso_credentials(path):
     j = json.loads(raw)
 
     if check_expired(j["expiresAt"]):
-        print('x')
         raise KeyError
 
     return j["accessToken"]
@@ -89,9 +89,15 @@ def login(ctx, **kwargs):
         sso_token = get_sso_credentials(SSO_CRED_DIR)
     except KeyError:
         ctx.log("Failed to get SSO credentials, trying to authenticate again")
+        ret = run(['aws', 'sso', 'login'])
+        if ret.returncode != 0:
+            ctx.log("Something went wrong trying to login")
+            return
+        sso_token = get_sso_credentials(SSO_CRED_DIR)
+
+    sso = boto3.client('sso')
 
     try:
-        sso = boto3.client('sso')
         ret = sso.get_role_credentials(
             roleName=p["sso_role_name"],
             accountId=p["sso_account_id"],
