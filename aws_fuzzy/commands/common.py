@@ -23,7 +23,7 @@ def common_params(a="all", r="all", f="''", p=True, l=0):
             show_default=True,
             help='Use a custom query to filter results')
         @click.option(
-            '--pager',
+            '--pager/--no-pager',
             'pager',
             flag_value=True,
             default=p,
