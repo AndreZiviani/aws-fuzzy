@@ -55,9 +55,69 @@ def asg(ctx, **kwargs):
 @common_params()
 @cache_params()
 @pass_environment
+def cloudformation(ctx, **kwargs):
+    """CloudFormation resources"""
+    kwargs['service'] = "AWS::CloudFormation::%"
+    query(ctx, kwargs)
+
+
+@cli.command()
+@common_params()
+@cache_params()
+@pass_environment
 def cf(ctx, **kwargs):
     """CloudFront (CF) resources"""
     kwargs['service'] = "AWS::CloudFront::%"
+    query(ctx, kwargs)
+
+
+@cli.command()
+@common_params()
+@cache_params()
+@pass_environment
+def ct(ctx, **kwargs):
+    """CloudTrail (CT) resources"""
+    kwargs['service'] = "AWS::CloudTrail::%"
+    query(ctx, kwargs)
+
+
+@cli.command()
+@common_params()
+@cache_params()
+@pass_environment
+def cw(ctx, **kwargs):
+    """CloudWatch (CW) resources"""
+    kwargs['service'] = "AWS::CloudWatch::%"
+    query(ctx, kwargs)
+
+
+@cli.command()
+@common_params()
+@cache_params()
+@pass_environment
+def codebuild(ctx, **kwargs):
+    """CodeBuild resources"""
+    kwargs['service'] = "AWS::CodeBuild::%"
+    query(ctx, kwargs)
+
+
+@cli.command()
+@common_params()
+@cache_params()
+@pass_environment
+def codepipeline(ctx, **kwargs):
+    """CodePipeline resources"""
+    kwargs['service'] = "AWS::CodePipeline::%"
+    query(ctx, kwargs)
+
+
+@cli.command()
+@common_params()
+@cache_params()
+@pass_environment
+def config(ctx, **kwargs):
+    """Config resources"""
+    kwargs['service'] = "AWS::Config::%"
     query(ctx, kwargs)
 
 
@@ -113,6 +173,36 @@ def ec2(ctx, **kwargs):
 @common_params()
 @cache_params()
 @pass_environment
+def eb(ctx, **kwargs):
+    """ElasticBeanstalk (EB) resources"""
+    kwargs['service'] = "AWS::ElasticBeanstalk::%"
+    query(ctx, kwargs)
+
+
+@cli.command()
+@common_params()
+@cache_params()
+@pass_environment
+def elb(ctx, **kwargs):
+    """ElasticLoadBalancing (ELB) resources"""
+    kwargs['service'] = "AWS::ElasticLoadBalancing::%"
+    query(ctx, kwargs)
+
+
+@cli.command()
+@common_params()
+@cache_params()
+@pass_environment
+def elbv2(ctx, **kwargs):
+    """ElasticLoadBalancing V2 (ELB) resources"""
+    kwargs['service'] = "AWS::ElasticLoadBalancingV2::%"
+    query(ctx, kwargs)
+
+
+@cli.command()
+@common_params()
+@cache_params()
+@pass_environment
 def iam(ctx, **kwargs):
     """Identity and Access Management (IAM) resources"""
     kwargs['service'] = "AWS::IAM::%"
@@ -143,7 +233,87 @@ def rds(ctx, **kwargs):
 @common_params()
 @cache_params()
 @pass_environment
+def redshift(ctx, **kwargs):
+    """Redshift resources"""
+    kwargs['service'] = "AWS::Redshift::%"
+    query(ctx, kwargs)
+
+
+@cli.command()
+@common_params()
+@cache_params()
+@pass_environment
 def s3(ctx, **kwargs):
     """Simple Storage Service (S3) resources"""
     kwargs['service'] = "AWS::S3::%"
+    query(ctx, kwargs)
+
+
+@cli.command()
+@common_params()
+@cache_params()
+@pass_environment
+def ssm(ctx, **kwargs):
+    """Systems Manager (SSM) resources"""
+    kwargs['service'] = "AWS::SSM::%"
+    query(ctx, kwargs)
+
+
+@cli.command()
+@common_params()
+@cache_params()
+@pass_environment
+def servicecatalog(ctx, **kwargs):
+    """Service Catalog resources"""
+    kwargs['service'] = "AWS::ServiceCatalog::%"
+    query(ctx, kwargs)
+
+
+@cli.command()
+@common_params()
+@cache_params()
+@pass_environment
+def shield(ctx, **kwargs):
+    """Shield resources"""
+    kwargs['service'] = "AWS::Shield::%"
+    query(ctx, kwargs)
+
+
+@cli.command()
+@common_params()
+@cache_params()
+@pass_environment
+def shieldr(ctx, **kwargs):
+    """Shield Regional resources"""
+    kwargs['service'] = "AWS::ShieldRegional::%"
+    query(ctx, kwargs)
+
+
+@cli.command()
+@common_params()
+@cache_params()
+@pass_environment
+def waf(ctx, **kwargs):
+    """WAF resources"""
+    kwargs['service'] = "AWS::WAF::%"
+    query(ctx, kwargs)
+
+
+@cli.command()
+@common_params()
+@cache_params()
+@pass_environment
+def wafr(ctx, **kwargs):
+    """WAF Regional resources"""
+    kwargs['service'] = "AWS::WAFRegional::%"
+    query(ctx, kwargs)
+
+
+@cli.command()
+@common_params()
+@cache_params()
+@pass_environment
+def xray(ctx, **kwargs):
+    """XRay resources"""
+    kwargs['service'] = "AWS::XRay::%"
     query(ctx, kwargs)
