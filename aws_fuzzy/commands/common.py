@@ -39,13 +39,6 @@ def common_params(a="all", r="all", f="''", p=True, c=True, l=0):
             show_default=True,
             help='Send query results to pager')
         @click.option(
-            '--cache/--no-cache',
-            'cache',
-            flag_value=True,
-            default=c,
-            show_default=True,
-            help='Whether to use cached results')
-        @click.option(
             '-l',
             '--limit',
             default=l,

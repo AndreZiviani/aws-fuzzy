@@ -19,7 +19,6 @@ from datetime import timedelta
 
 @click.command("ssh")
 @common_params(p=False)
-@cache_params()
 @click.option(
     '-u',
     '--user',
