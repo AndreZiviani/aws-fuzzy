@@ -16,7 +16,9 @@ from pathlib import Path
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
-VERSION = open(os.path.join('.', 'VERSION')).read().strip()
+VERSION = open(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                 'VERSION')).read().strip()
 
 
 class Environment(object):
