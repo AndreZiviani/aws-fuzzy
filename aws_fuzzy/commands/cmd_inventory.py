@@ -1,6 +1,7 @@
 from aws_fuzzy.cli import pass_environment
 from aws_fuzzy.query import query
 from .common import common_params
+from .common import cache_params
 import click
 
 
@@ -12,6 +13,7 @@ def cli(ctx, **kwargs):
 
 @cli.command()
 @common_params()
+@cache_params()
 @pass_environment
 def acm(ctx, **kwargs):
     """AWS Certificate Manager (ACM) resources"""
@@ -21,6 +23,7 @@ def acm(ctx, **kwargs):
 
 @cli.command()
 @common_params()
+@cache_params()
 @pass_environment
 def apigw(ctx, **kwargs):
     """API Gateway (APIGW) resources"""
@@ -30,6 +33,7 @@ def apigw(ctx, **kwargs):
 
 @cli.command()
 @common_params()
+@cache_params()
 @pass_environment
 def apigwv2(ctx, **kwargs):
     """API Gateway V2 (APIGW V2) resources"""
@@ -39,6 +43,7 @@ def apigwv2(ctx, **kwargs):
 
 @cli.command()
 @common_params()
+@cache_params()
 @pass_environment
 def asg(ctx, **kwargs):
     """Auto Scaling Groups (ASG) resources"""
@@ -48,6 +53,7 @@ def asg(ctx, **kwargs):
 
 @cli.command()
 @common_params()
+@cache_params()
 @pass_environment
 def cf(ctx, **kwargs):
     """CloudFront (CF) resources"""
@@ -57,6 +63,7 @@ def cf(ctx, **kwargs):
 
 @cli.command()
 @common_params()
+@cache_params()
 @pass_environment
 def dynamodb(ctx, **kwargs):
     """DynamoDB resources"""
@@ -66,6 +73,7 @@ def dynamodb(ctx, **kwargs):
 
 @cli.command()
 @common_params()
+@cache_params()
 @click.option(
     '-t',
     '--type',
@@ -103,6 +111,7 @@ def ec2(ctx, **kwargs):
 
 @cli.command()
 @common_params()
+@cache_params()
 @pass_environment
 def iam(ctx, **kwargs):
     """Identity and Access Management (IAM) resources"""
@@ -112,6 +121,7 @@ def iam(ctx, **kwargs):
 
 @cli.command(name="lambda")  # lambda is a reserved name in python
 @common_params()
+@cache_params()
 @pass_environment
 def awslambda(ctx, **kwargs):
     """Lambda resources"""
@@ -121,6 +131,7 @@ def awslambda(ctx, **kwargs):
 
 @cli.command()
 @common_params()
+@cache_params()
 @pass_environment
 def rds(ctx, **kwargs):
     """Relational Database Service (RDS) resources"""
@@ -130,6 +141,7 @@ def rds(ctx, **kwargs):
 
 @cli.command()
 @common_params()
+@cache_params()
 @pass_environment
 def s3(ctx, **kwargs):
     """Simple Storage Service (S3) resources"""

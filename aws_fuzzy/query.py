@@ -4,7 +4,11 @@ import click
 import sys
 
 from .commands.common import get_profile
+from .commands.common import get_cache
+from .commands.common import set_cache
 
+from datetime import timedelta
+from datetime import datetime
 from pygments import highlight
 from pygments.lexers import JsonLexer
 from pygments.lexers import PythonLexer
@@ -98,8 +102,18 @@ def query(ctx, kwargs):
     ctx.vlog("params:")
     ctx.vlog(params)
 
-    ret = do_query(ctx, params['expression'], 'linx-digital-inventory-assets',
-                   kwargs['limit'])
+    ret = get_cache(ctx, "inventory", params['expression'])
+    if ret == None:
+        ret = do_query(ctx, params['expression'],
+                       'linx-digital-inventory-assets', kwargs['limit'])
+        tmp = {
+            'result': ret,
+            'expires':
+            datetime.utcnow() + timedelta(seconds=kwargs['cache_time'])
+        }
+        set_cache(ctx, "inventory", params['expression'], tmp)
+    else:
+        ret = ret['result']
 
     if kwargs['pager']:
         click.echo_via_pager(
