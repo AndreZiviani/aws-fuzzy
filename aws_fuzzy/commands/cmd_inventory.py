@@ -16,7 +16,7 @@ def cli(ctx, **kwargs):
 def acm(ctx, **kwargs):
     """AWS Certificate Manager (ACM) resources"""
     kwargs['service'] = "AWS::ACM::%"
-    query(ctx, **kwargs)
+    query(ctx, kwargs)
 
 
 @cli.command()
@@ -25,7 +25,7 @@ def acm(ctx, **kwargs):
 def apigw(ctx, **kwargs):
     """API Gateway (APIGW) resources"""
     kwargs['service'] = "AWS::ApiGateway::%"
-    query(ctx, **kwargs)
+    query(ctx, kwargs)
 
 
 @cli.command()
@@ -34,7 +34,7 @@ def apigw(ctx, **kwargs):
 def apigwv2(ctx, **kwargs):
     """API Gateway V2 (APIGW V2) resources"""
     kwargs['service'] = "AWS::ApiGatewayV2::%"
-    query(ctx, **kwargs)
+    query(ctx, kwargs)
 
 
 @cli.command()
@@ -43,7 +43,7 @@ def apigwv2(ctx, **kwargs):
 def asg(ctx, **kwargs):
     """Auto Scaling Groups (ASG) resources"""
     kwargs['service'] = "AWS::AutoScaling::%"
-    query(ctx, **kwargs)
+    query(ctx, kwargs)
 
 
 @cli.command()
@@ -52,7 +52,7 @@ def asg(ctx, **kwargs):
 def cf(ctx, **kwargs):
     """CloudFront (CF) resources"""
     kwargs['service'] = "AWS::CloudFront::%"
-    query(ctx, **kwargs)
+    query(ctx, kwargs)
 
 
 @cli.command()
@@ -61,7 +61,7 @@ def cf(ctx, **kwargs):
 def dynamodb(ctx, **kwargs):
     """DynamoDB resources"""
     kwargs['service'] = "AWS::DynamoDB::%"
-    query(ctx, **kwargs)
+    query(ctx, kwargs)
 
 
 @cli.command()
@@ -70,7 +70,7 @@ def dynamodb(ctx, **kwargs):
 def ec2(ctx, **kwargs):
     """Elastic Compute Cloud (EC2) resources"""
     kwargs['service'] = "AWS::EC2::%"
-    query(ctx, **kwargs)
+    query(ctx, kwargs)
 
 
 @cli.command()
@@ -79,7 +79,7 @@ def ec2(ctx, **kwargs):
 def iam(ctx, **kwargs):
     """Identity and Access Management (IAM) resources"""
     kwargs['service'] = "AWS::IAM::%"
-    query(ctx, **kwargs)
+    query(ctx, kwargs)
 
 
 @cli.command(name="lambda")  # lambda is a reserved name in python
@@ -88,7 +88,7 @@ def iam(ctx, **kwargs):
 def awslambda(ctx, **kwargs):
     """Lambda resources"""
     kwargs['service'] = "AWS::Lambda::%"
-    query(ctx, **kwargs)
+    query(ctx, kwargs)
 
 
 @cli.command()
@@ -97,7 +97,7 @@ def awslambda(ctx, **kwargs):
 def rds(ctx, **kwargs):
     """Relational Database Service (RDS) resources"""
     kwargs['service'] = "AWS::RDS::%"
-    query(ctx, **kwargs)
+    query(ctx, kwargs)
 
 
 @cli.command()
@@ -106,4 +106,4 @@ def rds(ctx, **kwargs):
 def s3(ctx, **kwargs):
     """Simple Storage Service (S3) resources"""
     kwargs['service'] = "AWS::S3::%"
-    query(ctx, **kwargs)
+    query(ctx, kwargs)
