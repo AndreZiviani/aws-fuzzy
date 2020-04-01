@@ -66,10 +66,38 @@ def dynamodb(ctx, **kwargs):
 
 @cli.command()
 @common_params()
+@click.option(
+    '-t',
+    '--type',
+    default='all',
+    show_default='all',
+    help='Filter by EC2 resource (case sensitive): ['
+    'CustomerGateway, '
+    'EIP, '
+    'Host, '
+    'Instance, '
+    'InternetGateway, '
+    'NetworkAcl, '
+    'NetworkInterface, '
+    'RegisteredHAInstance, '
+    'RouteTable, '
+    'SecurityGroup, '
+    'Subnet, '
+    'VPC, '
+    'VPCEndpoint, '
+    'VPCEndpointService, '
+    'VPCPeeringConnection, '
+    'VPNConnection, '
+    'VPNGateway, '
+    'Volume'
+    ']')
 @pass_environment
 def ec2(ctx, **kwargs):
     """Elastic Compute Cloud (EC2) resources"""
-    kwargs['service'] = "AWS::EC2::%"
+    if kwargs['type'] != 'all':
+        kwargs['service'] = f"AWS::EC2::{kwargs['type']}%"
+    else:
+        kwargs['service'] = "AWS::EC2::%"
     query(ctx, kwargs)
 
 
