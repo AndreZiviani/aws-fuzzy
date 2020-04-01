@@ -1,11 +1,13 @@
 from setuptools import setup
+import os
 
 setup(
     name="aws-fuzzy",
-    version_file=open(os.path.join('aws_fuzzy', 'VERSION')),
-    version=version_file.read().strip(),
+    version=open(os.path.join('aws_fuzzy', 'VERSION')).read().strip(),
     packages=["aws_fuzzy", "aws_fuzzy.commands"],
-    include_package_data=True,
+    package_data={'': [
+        'VERSION',
+    ]},
     install_requires=["click", "boto3", "pygments", "iterfzf"],
     python_requires='>=3',
     entry_points="""
