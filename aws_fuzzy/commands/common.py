@@ -1,6 +1,10 @@
 import click
 import functools
+import re
 
+from os.path import expanduser
+from datetime import datetime
+from datetime import timedelta
 
 AWS_DIR = expanduser("~") + "/.aws"
 SSO_CRED_DIR = AWS_DIR + "/sso/cache"
@@ -77,3 +81,42 @@ def cache_params(cache=True, cache_time=3600):
         return wrapper
 
     return params
+
+
+def get_profile(profile):
+    path = SSO_PROFILES
+    d = {}
+    with open(path, 'r') as f:
+        for l in f:
+            if l[0] == '[':
+                profile_name = ''
+                tmp = re.findall('\[(.*)\]', l)[0]
+                if 'profile' in tmp:
+                    profile_name = tmp.split()[1]
+                d[profile_name] = {}
+                d[profile_name]["name"] = profile_name
+                continue
+            else:
+                key, value = re.findall('([a-zA-Z_]+)\s*=\s*(.*)', l)[0]
+                d[profile_name][key] = value
+
+    try:
+        if re.match("[0-9]+", str(profile)):
+            # Got account ID
+            for k in d:
+                if d[k]['sso_account_id'] == profile:
+                    return d[k]
+        else:
+            # Got account name
+            return d[profile]
+
+    except KeyError:
+        return None
+
+
+def check_expired(cred, cache_time):
+    now = datetime.utcnow()
+    if (cred + timedelta(seconds=cache_time)) < now:
+        return True
+    else:
+        return False

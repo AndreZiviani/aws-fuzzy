@@ -1,6 +1,8 @@
 from aws_fuzzy.cli import pass_environment
 from aws_fuzzy.query import query
 from .common import common_params
+from .common import get_profile
+from .common import check_expired
 
 import click
 import re
@@ -18,33 +20,6 @@ from subprocess import run
 AWS_DIR = expanduser("~") + "/.aws"
 SSO_CRED_DIR = AWS_DIR + "/sso/cache"
 SSO_PROFILES = AWS_DIR + "/config"
-
-
-def get_profile(profile, path):
-    d = {}
-    with open(path, 'r') as f:
-        for l in f:
-            if l[0] == '[':
-                profile = re.findall('\[(.*)\]', l)[0]
-                if 'profile' in profile:
-                    profile = profile.split()[1]
-                d[profile] = {}
-                d[profile]["name"] = profile
-                continue
-            else:
-                key, value = re.findall('([a-zA-Z_]+)\s*=\s*(.*)', l)[0]
-                d[profile][key] = value
-
-    return d[profile]
-
-
-def check_expired(cred):
-    now = datetime.datetime.utcnow()
-    expires = datetime.datetime.strptime(cred, '%Y-%m-%dT%H:%M:%SUTC')
-    if expires < now:
-        return True
-    else:
-        return False
 
 
 def get_latest_credential(path):
