@@ -11,6 +11,8 @@ from pygments import highlight
 from pygments.lexers import JsonLexer
 from pygments.lexers import PythonLexer
 from pygments.formatters import TerminalFormatter
+from os.path import expanduser
+from pathlib import Path
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -18,7 +20,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 class Environment(object):
     def __init__(self):
         self.verbose = False
-        self.home = os.getcwd()
+        self.cache_dir = expanduser("~") + "/.aws-fuzzy"
 
     def log(self, msg, *args):
         """Logs a message to stderr."""
@@ -54,18 +56,25 @@ class ComplexCLI(click.MultiCommand):
                 name = name.encode("ascii", "replace")
             mod = __import__("aws_fuzzy.commands.cmd_{}".format(name), None,
                              None, ["cli"])
-        except ImportError:
-            print('err')
+        except ImportError as e:
+            print(e)
             return
         return mod.cli
 
 
 @click.command(cls=ComplexCLI, context_settings=CONTEXT_SETTINGS)
 @click.option("-v", "--verbose", is_flag=True, help="Enables verbose mode.")
+@click.option(
+    "--cache-dir",
+    default=expanduser("~") + "/.aws-fuzzy",
+    show_default=True,
+    help="Cache directory.")
 @pass_environment
 @click.version_option(version='0.0.1')
-def cli(ctx, verbose):
+def cli(ctx, verbose, cache_dir):
     ctx.verbose = verbose
+    ctx.cache_dir = cache_dir
+    Path(cache_dir).mkdir(parents=True, exist_ok=True)
 
 
 if __name__ == '__main__':

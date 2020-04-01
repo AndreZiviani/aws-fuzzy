@@ -3,6 +3,8 @@ import json
 import click
 import sys
 
+from .commands.common import get_profile
+
 from pygments import highlight
 from pygments.lexers import JsonLexer
 from pygments.lexers import PythonLexer
@@ -71,29 +73,32 @@ def do_query(ctx,
     return j
 
 
-def query(ctx, **kwargs):
+def query(ctx, kwargs):
 
+    params = kwargs
     if 'select' not in kwargs:
-        kwargs[
+        params[
             'select'] = "resourceId, accountId, awsRegion, configuration, tags"
 
     if kwargs['filter'] != "''":
-        kwargs[
+        params[
             'filter'] = f"resourceType like '{kwargs['service']}' AND {kwargs['filter']}"
     else:
-        kwargs['filter'] = f"resourceType like '{kwargs['service']}'"
+        params['filter'] = f"resourceType like '{kwargs['service']}'"
         if kwargs['account'] != 'all':
-            kwargs['filter'] += f" AND accountId like '{kwargs['account']}'"
+            account = get_profile(kwargs['account'])
+            params[
+                'filter'] += f" AND accountId like '{account['sso_account_id']}'"
         if kwargs['region'] != 'all':
-            kwargs['filter'] += f" AND awsRegion like '{kwargs['account']}'"
+            params['filter'] += f" AND awsRegion like '{kwargs['account']}'"
 
-    kwargs[
+    params[
         'expression'] = f"SELECT {kwargs['select']} WHERE {kwargs['filter']}"
 
-    ctx.vlog("kwargs:")
-    ctx.vlog(kwargs)
+    ctx.vlog("params:")
+    ctx.vlog(params)
 
-    ret = do_query(ctx, kwargs['expression'], 'linx-digital-inventory-assets',
+    ret = do_query(ctx, params['expression'], 'linx-digital-inventory-assets',
                    kwargs['limit'])
 
     if kwargs['pager']:

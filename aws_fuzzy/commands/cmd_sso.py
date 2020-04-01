@@ -1,6 +1,7 @@
 from aws_fuzzy.cli import pass_environment
 from aws_fuzzy.query import query
 from .common import common_params
+from .common import cache_params
 from .common import get_profile
 from .common import check_expired
 
@@ -11,11 +12,14 @@ import re
 import glob
 import datetime
 import json
+import shelve
 
 import boto3
 from iterfzf import iterfzf
 from os.path import expanduser
 from subprocess import run
+from datetime import datetime
+from datetime import timedelta
 
 AWS_DIR = expanduser("~") + "/.aws"
 SSO_CRED_DIR = AWS_DIR + "/sso/cache"
@@ -35,10 +39,23 @@ def get_sso_credentials(path):
 
     j = json.loads(raw)
 
-    if check_expired(j["expiresAt"]):
+    expires = datetime.strptime(j['expiresAt'], '%Y-%m-%dT%H:%M:%SUTC')
+    if check_expired(expires, 0):
         raise KeyError
 
     return j["accessToken"]
+
+
+def print_credentials(creds):
+    expires = datetime.utcfromtimestamp(int(
+        creds['expiration'] / 1000)).strftime('%Y-%m-%dT%H:%M:%SUTC')
+    print(f"""
+export AWS_ACCESS_KEY_ID='{creds['accessKeyId']}';
+export AWS_SECRET_ACCESS_KEY='{creds['secretAccessKey']}';
+export AWS_SESSION_TOKEN='{creds['sessionToken']}';
+export AWS_SECURITY_TOKEN='{creds['sessionToken']}';
+export AWS_EXPIRES='{expires}';
+    """)
 
 
 @click.group("sso")
@@ -54,11 +71,27 @@ def cli(ctx, **kwargs):
     default=os.getenv('AWS_PROFILE', 'default'),
     show_default="$AWS_PROFILE",
     help='AWS Profile')
+@cache_params()
 @pass_environment
 def login(ctx, **kwargs):
     """Login to AWS SSO"""
 
-    p = get_profile(kwargs['profile'], SSO_PROFILES)
+    p = get_profile(kwargs['profile'])
+
+    ctx.vlog(kwargs)
+    ctx.vlog(p)
+    if kwargs['cache']:
+        s = shelve.open(ctx.cache_dir + "/sso")
+        if p['name'] in s:
+            ctx.vlog('Found profile in cache')
+            c = s[p['name']]
+            if check_expired(c['expires'], 0):
+                ctx.log(
+                    'Found credentials in cache but they are expired, requesting new one'
+                )
+            else:
+                print_credentials(c['credentials'])
+                return
 
     try:
         sso_token = get_sso_credentials(SSO_CRED_DIR)
@@ -78,8 +111,10 @@ def login(ctx, **kwargs):
             accountId=p["sso_account_id"],
             accessToken=sso_token)
         credentials = ret["roleCredentials"]
-        print(credentials)
+        if kwargs['cache']:
+            expires = datetime.utcfromtimestamp(
+                int(credentials['expiration'] / 1000))
+            s[p['name']] = {'credentials': credentials, 'expires': expires}
+        print_credentials(credentials)
     except Exception as e:
-        ctx.log(e)
         ctx.log("Invalid SSO token, removing credentials")
-        #os.remove(get_latest_credential(SSO_CRED_DIR))
