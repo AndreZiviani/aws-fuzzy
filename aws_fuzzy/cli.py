@@ -16,6 +16,8 @@ from pathlib import Path
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
+VERSION = open(os.path.join('.', 'VERSION')).read().strip()
+
 
 class Environment(object):
     def __init__(self):
@@ -70,7 +72,7 @@ class ComplexCLI(click.MultiCommand):
     show_default=True,
     help="Cache directory.")
 @pass_environment
-@click.version_option(version='0.0.1')
+@click.version_option(version=VERSION)
 def cli(ctx, verbose, cache_dir):
     ctx.verbose = verbose
     ctx.cache_dir = cache_dir
