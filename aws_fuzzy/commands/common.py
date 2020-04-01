@@ -1,6 +1,7 @@
 import click
 import functools
 import re
+import shelve
 
 from os.path import expanduser
 from datetime import datetime
@@ -107,9 +108,30 @@ def get_profile(profile):
         return None
 
 
-def check_expired(cred, cache_time):
+def check_expired(date):
     now = datetime.utcnow()
-    if (cred + timedelta(seconds=cache_time)) < now:
+    if date < now:
         return True
     else:
         return False
+
+
+def get_cache(ctx, service, item):
+    s = shelve.open(ctx.cache_dir + f"/{service}")
+    if item in s:
+        if check_expired(s[item]["expires"]):
+            del s[item]
+        else:
+            tmp = s[item]
+            s.close()
+            ctx.vlog("Using cached results!")
+            return tmp
+
+    s.close()
+    return None
+
+
+def set_cache(ctx, service, item, value):
+    s = shelve.open(ctx.cache_dir + f"/{service}")
+    s[item] = value
+    s.close()

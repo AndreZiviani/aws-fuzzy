@@ -4,6 +4,8 @@ from .common import common_params
 from .common import cache_params
 from .common import get_profile
 from .common import check_expired
+from .common import get_cache
+from .common import set_cache
 
 import click
 import re
@@ -45,21 +47,19 @@ def cli(ctx, **kwargs):
             pass
 
     if kwargs['cache']:
-        s = shelve.open(ctx.cache_dir + "/ssh")
-
-        ctx.vlog(profile)
-        if profile in s:
-            tmp = s[profile]
-
-            if check_expired(tmp['date'], kwargs['cache_time']):
-                ret = do_query(ctx, kwargs)
-                tmp['instances'] = ret
-                tmp['date'] = datetime.utcnow()
-            else:
-                ret = tmp['instances']
+        tmp = get_cache(ctx, "ssh", profile)
+        if tmp != None:
+            ret = tmp['instances']
         else:
             ret = do_query(ctx, kwargs)
-            s[profile] = {'instances': ret, 'date': datetime.utcnow()}
+            tmp = {
+                'instances':
+                ret,
+                'expires':
+                datetime.utcnow() + timedelta(seconds=kwargs['cache_time'])
+            }
+            set_cache(ctx, "ssh", profile, tmp)
+
     else:
         ret = do_query(ctx, kwargs)
 

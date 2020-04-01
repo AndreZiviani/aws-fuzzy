@@ -4,6 +4,8 @@ from .common import common_params
 from .common import cache_params
 from .common import get_profile
 from .common import check_expired
+from .common import get_cache
+from .common import set_cache
 
 import click
 import re
@@ -12,7 +14,6 @@ import re
 import glob
 import datetime
 import json
-import shelve
 
 import boto3
 from iterfzf import iterfzf
@@ -20,10 +21,6 @@ from os.path import expanduser
 from subprocess import run
 from datetime import datetime
 from datetime import timedelta
-
-AWS_DIR = expanduser("~") + "/.aws"
-SSO_CRED_DIR = AWS_DIR + "/sso/cache"
-SSO_PROFILES = AWS_DIR + "/config"
 
 
 def get_latest_credential(path):
@@ -81,17 +78,13 @@ def login(ctx, **kwargs):
     ctx.vlog(kwargs)
     ctx.vlog(p)
     if kwargs['cache']:
-        s = shelve.open(ctx.cache_dir + "/sso")
-        if p['name'] in s:
-            ctx.vlog('Found profile in cache')
-            c = s[p['name']]
-            if check_expired(c['expires'], 0):
-                ctx.log(
-                    'Found credentials in cache but they are expired, requesting new one'
-                )
-            else:
-                print_credentials(c['credentials'])
-                return
+        ret = get_cache(ctx, "sso", p['name'])
+
+        if ret != None:
+            print_credentials(c['credentials'])
+            return
+
+        ctx.vlog("Could not find cached credentials or they are expired")
 
     try:
         sso_token = get_sso_credentials(SSO_CRED_DIR)
@@ -114,7 +107,10 @@ def login(ctx, **kwargs):
         if kwargs['cache']:
             expires = datetime.utcfromtimestamp(
                 int(credentials['expiration'] / 1000))
-            s[p['name']] = {'credentials': credentials, 'expires': expires}
+            set_cache(ctx, "sso", p['name'], {
+                'credentials': credentials,
+                'expires': expires
+            })
         print_credentials(credentials)
     except Exception as e:
         ctx.log("Invalid SSO token, removing credentials")
