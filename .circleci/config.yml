@@ -29,19 +29,14 @@ jobs:
           name: build
           command: |
             . venv/bin/activate
-            python setup.py sdist
+            python setup.py sdist bdist_wheel
+            ls dist/
 
-      # Step 4: Cache venv
+      # Step 5: Cache venv
       - save_cache:
           key: venv-{{ checksum "requirements.txt" }}
           paths:
             - venv
-
-      # Step 5: Save artifacts
-      - persist_to_workspace:
-          root: .
-          paths:
-            - dist
 
   deploy:
     docker:
@@ -51,14 +46,13 @@ jobs:
     working_directory: ~/repo
 
     steps:
-      # Step 1: restore cache
+      # Step 1: obtain repo from GitHub
+      - checkout
+
+      # Step 2: restore cache
       - restore_cache:
           keys:
             - venv-{{ checksum "requirements.txt" }}
-
-      # Step 2: Get artifact
-      - attach_workspace:
-          at: ./dist
 
       # Step 3: create .pypirc
       - run:
@@ -73,6 +67,7 @@ jobs:
           name: upload to pypi
           command: |
             . venv/bin/activate
+            python setup.py sdist bdist_wheel
             twine upload dist/*
 
 workflows:

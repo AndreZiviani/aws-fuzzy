@@ -4,3 +4,5 @@ botocore>=1.15
 pygments
 iterfzf
 twine
+setuptools>=46.0
+wheel
