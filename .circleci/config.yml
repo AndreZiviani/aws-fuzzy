@@ -30,7 +30,6 @@ jobs:
           command: |
             . venv/bin/activate
             python setup.py sdist
-            python setup.py bdist_wheel
       # Step 5: Upload to PyPi
       - run:
           name: upload to pypi
