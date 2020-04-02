@@ -3,18 +3,14 @@ from aws_fuzzy.query import query
 from .common import common_params
 from .common import cache_params
 from .common import get_profile
-from .common import check_expired
 from .common import get_cache
 from .common import set_cache
 
 import click
-import re
 import os
 import subprocess
-import shelve
 
 from iterfzf import iterfzf
-from os.path import expanduser
 from datetime import datetime
 from datetime import timedelta
 

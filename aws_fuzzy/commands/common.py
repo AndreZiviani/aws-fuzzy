@@ -3,9 +3,8 @@ import functools
 import re
 import shelve
 
-from os.path import expanduser
 from datetime import datetime
-from datetime import timedelta
+from os.path import expanduser
 
 AWS_DIR = expanduser("~") + "/.aws"
 SSO_CRED_DIR = AWS_DIR + "/sso/cache"

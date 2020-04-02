@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
-import boto3
 import click
-import json
-import subprocess
 import sys
-import functools
 import os
 from pprint import pformat
 from pygments import highlight
-from pygments.lexers import JsonLexer
 from pygments.lexers import PythonLexer
 from pygments.formatters import TerminalFormatter
 from os.path import expanduser

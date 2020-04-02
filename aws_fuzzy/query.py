@@ -11,7 +11,6 @@ from datetime import timedelta
 from datetime import datetime
 from pygments import highlight
 from pygments.lexers import JsonLexer
-from pygments.lexers import PythonLexer
 from pygments.formatters import TerminalFormatter
 
 
