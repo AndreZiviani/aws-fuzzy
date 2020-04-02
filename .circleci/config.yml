@@ -51,16 +51,19 @@ jobs:
     working_directory: ~/repo
 
     steps:
-      # Step 1: restore cache
+      # Step 1: obtain repo from GitHub
+      - checkout
+
+      # Step 2: restore cache
       - restore_cache:
           keys:
             - venv-{{ checksum "requirements.txt" }}
 
-      # Step 2: Get artifact
+      # Step 3: Get artifact
       - attach_workspace:
           at: ./dist
 
-      # Step 3: create .pypirc
+      # Step 4: create .pypirc
       - run:
           name: init .pypirc
           command: |
@@ -68,7 +71,7 @@ jobs:
             echo -e "username = __token__" >> ~/.pypirc
             echo -e "password = $PYPI_PASSWORD" >> ~/.pypirc
 
-      # Step 4: Upload to PyPi!
+      # Step 5: Upload to PyPi!
       - run:
           name: upload to pypi
           command: |
