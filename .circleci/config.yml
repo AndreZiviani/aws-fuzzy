@@ -76,7 +76,8 @@ jobs:
           name: upload to pypi
           command: |
             . venv/bin/activate
-            twine upload dist/*
+            python setup.py sdist bdist_wheel
+            twine upload --verbose dist/*
 
 workflows:
   version: 2
