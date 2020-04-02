@@ -30,6 +30,12 @@ jobs:
           command: |
             . venv/bin/activate
             python setup.py sdist
+  deploy:
+    requires:
+      - build
+    working_directory: ~/repo
+
+    steps:
       # Step 5: Upload to PyPi
       - run:
           name: upload to pypi
