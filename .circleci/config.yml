@@ -49,15 +49,10 @@ workflows:
   version: 2
   build_and_deploy:
     jobs:
-      - build:
-        filters:
-          branches:
-            only: /.*/
+      - build
       - deploy:
           requires:
             - build
           filters:
             tags:
               only: /v[0-9]+(\.[0-9]+)*/
-            branches:
-              ignore: /.*/
