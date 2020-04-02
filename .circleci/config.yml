@@ -50,9 +50,9 @@ workflows:
   build_and_deploy:
     jobs:
       - build:
-        filters:
-          tags:
-            only: /.*/
+          filters:
+            tags:
+              only: /.*/
       - deploy:
           requires:
             - build
