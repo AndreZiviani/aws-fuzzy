@@ -8,7 +8,9 @@ setup(
     package_data={'': [
         'VERSION',
     ]},
-    install_requires=["click", "boto3", "pygments", "iterfzf"],
+    install_requires=[
+        "click", "boto3>=1.12", "botocore>=1.15", "pygments", "iterfzf"
+    ],
     python_requires='>=3',
     entry_points="""
         [console_scripts]
