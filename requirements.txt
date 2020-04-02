@@ -5,3 +5,4 @@ pygments
 iterfzf
 twine
 setuptools
+wheel
