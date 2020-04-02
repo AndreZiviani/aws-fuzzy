@@ -1,6 +1,4 @@
 from aws_fuzzy.cli import pass_environment
-from aws_fuzzy.query import query
-from .common import common_params
 from .common import cache_params
 from .common import get_profile
 from .common import check_expired
@@ -8,19 +6,18 @@ from .common import get_cache
 from .common import set_cache
 
 import click
-import re
 import os
-import re
 import glob
-import datetime
 import json
 
 import boto3
-from iterfzf import iterfzf
-from os.path import expanduser
 from subprocess import run
 from datetime import datetime
-from datetime import timedelta
+from os.path import expanduser
+
+AWS_DIR = expanduser("~") + "/.aws"
+SSO_CRED_DIR = AWS_DIR + "/sso/cache"
+SSO_PROFILES = AWS_DIR + "/config"
 
 
 def get_latest_credential(path):
@@ -81,7 +78,7 @@ def login(ctx, **kwargs):
         ret = get_cache(ctx, "sso", p['name'])
 
         if ret != None:
-            print_credentials(c['credentials'])
+            print_credentials(ret['credentials'])
             return
 
         ctx.vlog("Could not find cached credentials or they are expired")
@@ -112,5 +109,5 @@ def login(ctx, **kwargs):
                 'expires': expires
             })
         print_credentials(credentials)
-    except Exception as e:
+    except Exception:
         ctx.log("Invalid SSO token, removing credentials")
