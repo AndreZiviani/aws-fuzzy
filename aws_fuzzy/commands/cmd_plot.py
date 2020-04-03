@@ -16,7 +16,7 @@ def cli(ctx, **kwargs):
 
 @cli.command()
 @common_params()
-#@cache_params()
+@cache_params()
 @query_params()
 @pass_environment
 def vpcpeering(ctx, **kwargs):
