@@ -98,7 +98,7 @@ def do_query(ctx,
 def query(ctx, kwargs):
 
     params = kwargs
-    if 'select' not in kwargs:
+    if kwargs['select'] == None:
         params[
             'select'] = "resourceId, accountId, awsRegion, configuration, tags"
 
