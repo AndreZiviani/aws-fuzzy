@@ -1,4 +1,5 @@
 import boto3
+import os
 import json
 import click
 import sys
@@ -15,10 +16,28 @@ from pygments.formatters import TerminalFormatter
 
 
 def do_query(ctx,
+             cache_time,
              Expression=None,
              ConfigurationAggregatorName=None,
              Limit=None):
     c = boto3.client('config')
+
+    if ConfigurationAggregatorName == None:
+        ret = get_cache(ctx, "inventory", os.getenv('AWS_PROFILE', "unknown"))
+        if ret != None:
+            ConfigurationAggregatorName = ret['inventory']
+
+        else:
+            aggs = c.describe_configuration_aggregators()
+            ConfigurationAggregatorName = aggs['ConfigurationAggregators'][0][
+                'ConfigurationAggregatorName']
+
+            tmp = {
+                'inventory': ConfigurationAggregatorName,
+                'expires': datetime.utcnow() + timedelta(seconds=cache_time)
+            }
+            set_cache(ctx, "inventory", os.getenv('AWS_PROFILE', "unknown"),
+                      tmp)
 
     if Limit <= 100 and Limit > 0:
         o = c.select_aggregate_resource_config(
@@ -103,8 +122,8 @@ def query(ctx, kwargs):
 
     ret = get_cache(ctx, "inventory", params['expression'])
     if ret == None:
-        ret = do_query(ctx, params['expression'],
-                       'linx-digital-inventory-assets', kwargs['limit'])
+        ret = do_query(ctx, kwargs['cache_time'], params['expression'],
+                       kwargs['inventory'], kwargs['limit'])
         tmp = {
             'result': ret,
             'expires':

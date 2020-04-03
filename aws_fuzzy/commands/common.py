@@ -85,6 +85,31 @@ def cache_params(cache=True, cache_time=3600):
     return params
 
 
+def modify_none(ctx, param, value):
+    if value == "_none_":
+        return None
+    return value
+
+
+def query_params():
+    def params(func):
+        @click.option(
+            '-i',
+            '--inventory',
+            default="_none_",
+            show_default="First one found",
+            show_envvar=True,
+            callback=modify_none,
+            help='Cache results TTL in seconds')
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return params
+
+
 def get_profile(profile):
     path = SSO_PROFILES
     d = {}

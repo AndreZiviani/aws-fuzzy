@@ -2,6 +2,7 @@ from aws_fuzzy.cli import pass_environment
 from aws_fuzzy.query import query
 from .common import common_params
 from .common import cache_params
+from .common import query_params
 import click
 
 
@@ -14,6 +15,7 @@ def cli(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def acm(ctx, **kwargs):
     """AWS Certificate Manager (ACM) resources"""
@@ -24,6 +26,7 @@ def acm(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def apigw(ctx, **kwargs):
     """API Gateway (APIGW) resources"""
@@ -34,6 +37,7 @@ def apigw(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def apigwv2(ctx, **kwargs):
     """API Gateway V2 (APIGW V2) resources"""
@@ -44,6 +48,7 @@ def apigwv2(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def asg(ctx, **kwargs):
     """Auto Scaling Groups (ASG) resources"""
@@ -54,6 +59,7 @@ def asg(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def cloudformation(ctx, **kwargs):
     """CloudFormation resources"""
@@ -64,6 +70,7 @@ def cloudformation(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def cf(ctx, **kwargs):
     """CloudFront (CF) resources"""
@@ -74,6 +81,7 @@ def cf(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def ct(ctx, **kwargs):
     """CloudTrail (CT) resources"""
@@ -84,6 +92,7 @@ def ct(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def cw(ctx, **kwargs):
     """CloudWatch (CW) resources"""
@@ -94,6 +103,7 @@ def cw(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def codebuild(ctx, **kwargs):
     """CodeBuild resources"""
@@ -104,6 +114,7 @@ def codebuild(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def codepipeline(ctx, **kwargs):
     """CodePipeline resources"""
@@ -114,6 +125,7 @@ def codepipeline(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def config(ctx, **kwargs):
     """Config resources"""
@@ -124,6 +136,7 @@ def config(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def dynamodb(ctx, **kwargs):
     """DynamoDB resources"""
@@ -134,6 +147,7 @@ def dynamodb(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @click.option(
     '-t',
     '--type',
@@ -173,6 +187,7 @@ def ec2(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def eb(ctx, **kwargs):
     """ElasticBeanstalk (EB) resources"""
@@ -183,6 +198,7 @@ def eb(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def elb(ctx, **kwargs):
     """ElasticLoadBalancing (ELB) resources"""
@@ -193,6 +209,7 @@ def elb(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def elbv2(ctx, **kwargs):
     """ElasticLoadBalancing V2 (ELB) resources"""
@@ -203,6 +220,7 @@ def elbv2(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def iam(ctx, **kwargs):
     """Identity and Access Management (IAM) resources"""
@@ -213,6 +231,7 @@ def iam(ctx, **kwargs):
 @cli.command(name="lambda")  # lambda is a reserved name in python
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def awslambda(ctx, **kwargs):
     """Lambda resources"""
@@ -223,6 +242,7 @@ def awslambda(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def rds(ctx, **kwargs):
     """Relational Database Service (RDS) resources"""
@@ -233,6 +253,7 @@ def rds(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def redshift(ctx, **kwargs):
     """Redshift resources"""
@@ -243,6 +264,7 @@ def redshift(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def s3(ctx, **kwargs):
     """Simple Storage Service (S3) resources"""
@@ -253,6 +275,7 @@ def s3(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def ssm(ctx, **kwargs):
     """Systems Manager (SSM) resources"""
@@ -263,6 +286,7 @@ def ssm(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def servicecatalog(ctx, **kwargs):
     """Service Catalog resources"""
@@ -273,6 +297,7 @@ def servicecatalog(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def shield(ctx, **kwargs):
     """Shield resources"""
@@ -283,6 +308,7 @@ def shield(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def shieldr(ctx, **kwargs):
     """Shield Regional resources"""
@@ -293,6 +319,7 @@ def shieldr(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def waf(ctx, **kwargs):
     """WAF resources"""
@@ -303,6 +330,7 @@ def waf(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def wafr(ctx, **kwargs):
     """WAF Regional resources"""
@@ -313,6 +341,7 @@ def wafr(ctx, **kwargs):
 @cli.command()
 @common_params()
 @cache_params()
+@query_params()
 @pass_environment
 def xray(ctx, **kwargs):
     """XRay resources"""
