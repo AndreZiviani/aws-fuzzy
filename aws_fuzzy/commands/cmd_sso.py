@@ -64,6 +64,7 @@ def cli(ctx, **kwargs):
     '--profile',
     default=os.getenv('AWS_PROFILE', 'default'),
     show_default="$AWS_PROFILE",
+    show_envvar=True,
     help='AWS Profile')
 @cache_params()
 @pass_environment

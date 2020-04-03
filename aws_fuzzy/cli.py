@@ -9,7 +9,8 @@ from pygments.formatters import TerminalFormatter
 from os.path import expanduser
 from pathlib import Path
 
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+CONTEXT_SETTINGS = dict(
+    help_option_names=['-h', '--help'], auto_envvar_prefix="AWSFUZZY")
 
 VERSION = open(
     os.path.join(os.path.dirname(os.path.abspath(__file__)),

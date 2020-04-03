@@ -139,6 +139,7 @@ def dynamodb(ctx, **kwargs):
     '--type',
     default='all',
     show_default='all',
+    show_envvar=True,
     help='Filter by EC2 resource (case sensitive): ['
     'CustomerGateway, '
     'EIP, '

@@ -22,13 +22,21 @@ from datetime import timedelta
     '--user',
     default="''",
     show_default=True,
+    show_envvar=True,
     help='Username to use with SSH')
 @click.option(
-    '-k', '--key', default="''", show_default=True, help='SSH key path')
+    '-k',
+    '--key',
+    default="''",
+    show_default=True,
+    show_envvar=True,
+    help='SSH key path')
 @cache_params()
 @pass_environment
 def cli(ctx, **kwargs):
     """SSH to EC2 instance"""
+    print(ctx)
+    return
 
     if kwargs['account'] == 'all':
         profile = 'all'
