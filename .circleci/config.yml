@@ -37,11 +37,11 @@ jobs:
           paths:
             - venv
 
-              ## Step 5: Save artifacts
-              #- persist_to_workspace:
-              #    root: .
-              #    paths:
-              #      - dist
+      # Step 5: Save artifacts
+      - persist_to_workspace:
+          root: .
+          paths:
+            - dist
 
   deploy:
     docker:
@@ -59,9 +59,9 @@ jobs:
           keys:
             - venv-{{ checksum "requirements.txt" }}
 
-              ## Step 3: Get artifact
-              #- attach_workspace:
-              #    at: ./dist
+      # Step 3: Get artifact
+      - attach_workspace:
+          at: .
 
       # Step 4: create .pypirc
       - run:
@@ -76,7 +76,7 @@ jobs:
           name: upload to pypi
           command: |
             . venv/bin/activate
-            python setup.py sdist bdist_wheel
+            #python setup.py sdist bdist_wheel
             twine upload --verbose dist/*
 
 workflows:
