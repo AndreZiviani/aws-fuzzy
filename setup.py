@@ -9,7 +9,8 @@ setup(
         'VERSION',
     ]},
     install_requires=[
-        "click", "boto3>=1.12", "botocore>=1.15", "pygments", "iterfzf"
+        "click", "boto3>=1.12", "botocore>=1.15", "pygments", "iterfzf",
+        "pyvis"
     ],
     python_requires='>=3',
     entry_points="""

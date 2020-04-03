@@ -6,3 +6,4 @@ iterfzf
 twine
 setuptools
 wheel
+pyvis
