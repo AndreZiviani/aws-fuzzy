@@ -13,7 +13,7 @@ SSO_CRED_DIR = AWS_DIR + "/sso/cache"
 SSO_PROFILES = AWS_DIR + "/config"
 
 
-def common_params(a="all", r="all", f="''", p=True, c=True, l=0):
+def common_params(a="all", s=None, r="all", f="''", p=True, c=True, l=0):
     def params(func):
         @click.option(
             '-a',
@@ -22,6 +22,13 @@ def common_params(a="all", r="all", f="''", p=True, c=True, l=0):
             show_default=True,
             show_envvar=True,
             help='Filter by accountid')
+        @click.option(
+            '-s',
+            '--select',
+            default=s,
+            show_default=True,
+            show_envvar=True,
+            help='Custom select to filter results')
         @click.option(
             '-r',
             '--region',
