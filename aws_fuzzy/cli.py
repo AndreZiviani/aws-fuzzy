@@ -20,7 +20,6 @@ VERSION = open(
 class Environment(object):
     def __init__(self):
         self.verbose = False
-        self.cache_dir = expanduser("~") + "/.aws-fuzzy"
 
     def log(self, msg, *args):
         """Logs a message to stderr."""

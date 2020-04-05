@@ -1,8 +1,6 @@
 from aws_fuzzy.cli import pass_environment
-from aws_fuzzy.query import query
-from .common import common_params
-from .common import cache_params
-from .common import query_params
+from aws_fuzzy.query import Query
+from aws_fuzzy import common
 import click
 import json
 from pyvis.network import Network
@@ -15,9 +13,9 @@ def cli(ctx, **kwargs):
 
 
 @cli.command()
-@common_params()
-@cache_params()
-@query_params()
+@common.common_params()
+@common.cache_params()
+@common.query_params()
 @pass_environment
 def vpcpeering(ctx, **kwargs):
     """Plot VPC Peering connections graph"""
@@ -29,7 +27,22 @@ def vpcpeering(ctx, **kwargs):
                         ", configuration.vpcPeeringConnectionId" \
                         ", tags.tag"
     kwargs['pager'] = False
-    ret = query(ctx, kwargs)
+
+    query = Query(
+        ctx,
+        Service=kwargs['service'],
+        Select=kwargs['select'],
+        Filter=kwargs['filter'],
+        Limit=kwargs['limit'],
+        Account=kwargs['account'],
+        Region=kwargs['region'],
+        Pager=kwargs['pager'],
+        Cache_time=kwargs['cache_time'])
+
+    if not query.valid:
+        query.query(kwargs['cache_time'])
+
+    ret = query.cached
 
     net = Network(height="750px", width="100%")
     net.barnes_hut()
