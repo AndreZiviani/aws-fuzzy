@@ -2,7 +2,7 @@
 [![PyPI version](https://badge.fury.io/py/aws-fuzzy.svg)](https://badge.fury.io/py/aws-fuzzy)
 [![Coverage Status](https://coveralls.io/repos/github/AndreZiviani/aws-fuzzy/badge.svg?branch=master)](https://coveralls.io/github/AndreZiviani/aws-fuzzy?branch=master)
 [![Downloads](https://crate.io/packages/aws-fuzzy)
-[![CircleCI](https://circleci.com/gh/AndreZiviani/aws-fuzzy/tree/master.svg?style=svg)](https://circleci.com/gh/AndreZiviani/aws-fuzzy/tree/master)
+[![CircleCI](https://circleci.com/gh/AndreZiviani/aws-fuzzy/tree/master.svg?style=shield)](https://circleci.com/gh/AndreZiviani/aws-fuzzy/tree/master)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/3879/badge)](https://bestpractices.coreinfrastructure.org/en/projects/3879)
 aws-fuzzy is a tool to retrieve information from multiple AWS services.
 
