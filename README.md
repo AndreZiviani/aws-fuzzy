@@ -4,6 +4,7 @@
 [![Downloads](https://pypip.in/d/pypiview/badge.png)](https://crate.io/packages/aws-fuzzy)
 [![CircleCI](https://circleci.com/gh/AndreZiviani/aws-fuzzy/tree/master.svg?style=shield)](https://circleci.com/gh/AndreZiviani/aws-fuzzy/tree/master)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/3879/badge)](https://bestpractices.coreinfrastructure.org/en/projects/3879)
+
 aws-fuzzy is a tool to retrieve information from multiple AWS services.
 
 - **AWS Config**: Retrieve inventory information from AWS Config
