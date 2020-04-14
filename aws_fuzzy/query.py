@@ -105,6 +105,10 @@ def query(ctx, kwargs):
     if kwargs['filter'] != "''":
         params[
             'filter'] = f"resourceType like '{kwargs['service']}' AND {kwargs['filter']}"
+        if kwargs['account'] != 'all':
+            account = get_profile(kwargs['account'])
+            params[
+                'filter'] += f" AND accountId like '{account['sso_account_id']}'"
     else:
         params['filter'] = f"resourceType like '{kwargs['service']}'"
         if kwargs['account'] != 'all':
