@@ -127,10 +127,14 @@ def get_profile(profile):
                 tmp = re.findall('\[(.*)\]', l)[0]
                 if 'profile' in tmp:
                     profile_name = tmp.split()[1]
+                elif tmp == 'default':
+                    profile_name = 'default'
                 d[profile_name] = {}
                 d[profile_name]["name"] = profile_name
                 continue
             else:
+                if l.strip() == '':
+                    continue
                 key, value = re.findall('([a-zA-Z_]+)\s*=\s*(.*)', l)[0]
                 d[profile_name][key] = value
 

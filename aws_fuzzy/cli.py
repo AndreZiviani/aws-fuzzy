@@ -21,6 +21,7 @@ class Environment(object):
     def __init__(self):
         self.verbose = False
         self.cache_dir = expanduser("~") + "/.aws-fuzzy"
+        self.region = os.getenv('AWS_DEFAULT_REGION', 'us-east-1')
 
     def log(self, msg, *args):
         """Logs a message to stderr."""

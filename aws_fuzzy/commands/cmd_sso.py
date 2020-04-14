@@ -34,7 +34,7 @@ def get_sso_credentials(path):
     j = json.loads(raw)
 
     expires = datetime.strptime(j['expiresAt'], '%Y-%m-%dT%H:%M:%SUTC')
-    if check_expired(expires, 0):
+    if check_expired(expires):
         raise KeyError
 
     return j["accessToken"]
@@ -112,3 +112,75 @@ def login(ctx, **kwargs):
         print_credentials(credentials)
     except Exception:
         ctx.log("Invalid SSO token, removing credentials")
+
+
+@cli.command()
+@pass_environment
+def configure(ctx, **kwargs):
+    """Configure AWS SSO"""
+
+    sso_url = None
+    sso_region = ctx.region
+
+    if os.path.isfile(SSO_PROFILES):
+        ctx.log(
+            "AWS config file already exists, making a backup before updating")
+        p = get_profile('default')
+
+        if p:
+            sso_url = p['sso_start_url']
+            sso_region = p['sso_region']
+
+        os.rename(SSO_PROFILES, f"{SSO_PROFILES}.bkp")
+
+    start = click.prompt("Enter SSO start url", default=sso_url)
+    region = click.prompt("Default region", default=sso_region)
+    ctx.region = region
+
+    f = open(SSO_PROFILES, 'w')
+    f.write(f"""[default]
+sso_start_url = {start}
+sso_region = {region}
+sso_role_name = dummy
+sso_account_id = 00000000""")
+
+    try:
+        sso_token = get_sso_credentials(SSO_CRED_DIR)
+    except KeyError:
+        ctx.log("Failed to get SSO credentials, trying to authenticate again")
+        ret = run(['aws', 'sso', 'login'])
+        if ret.returncode != 0:
+            ctx.log("Something went wrong trying to login")
+            return
+        sso_token = get_sso_credentials(SSO_CRED_DIR)
+
+    sso = boto3.client('sso', region_name=ctx.region)
+
+    accounts = sso.list_accounts(
+        accessToken=sso_token, maxResults=100)['accountList']
+
+    for a in accounts:
+        name = a['accountName'].replace(' ', '_')
+        roleslist = sso.list_account_roles(
+            accountId=a['accountId'], accessToken=sso_token,
+            maxResults=100)['roleList']
+
+        if len(roleslist) > 1:
+            for i in roleslist:
+                roles.append(i['roleName'])
+            ctx.log(
+                f"Found multiple roles for account '{a['accountName']} ({a['accountId']})': {roles}"
+            )
+            role = input("Please specify which role to use: ")
+        else:
+            role = roleslist[0]['roleName']
+        f.write(f"""
+[profile {name}]
+sso_start_url = {start}
+sso_region = {region}
+sso_account_id = {a['accountId']}
+sso_role_name = {role}""")
+
+    f.close()
+
+    ctx.log("Done! Please check ~/.aws/config for your profiles")
