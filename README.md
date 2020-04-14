@@ -194,22 +194,17 @@ Options:
 
 ## SSO
 
-Login to AWS SSO and export session credentials.
+Configure and login to AWS SSO and export session credentials.
 
 ```sh
-Usage: aws-fuzzy sso login [OPTIONS]
+Usage: aws-fuzzy sso [OPTIONS] COMMAND [ARGS]...
 
-  Login to AWS SSO
+  AWS SSO service
 
 Options:
-  -p, --profile TEXT    AWS Profile  [env var: AWSFUZZY_SSO_LOGIN_PROFILE;
-                        default: ($AWS_PROFILE)]
+  -h, --help  Show this message and exit.
 
-  --cache / --no-cache  Whether to use cached results  [env var:
-                        AWSFUZZY_SSO_LOGIN_CACHE; default: True]
-
-  --cache-time INTEGER  Cache results TTL in seconds  [env var:
-                        AWSFUZZY_SSO_LOGIN_CACHE_TIME; default: 3600]
-
-  -h, --help            Show this message and exit.
+Commands:
+  configure  Configure AWS SSO
+  login      Login to AWS SSO
 ```
