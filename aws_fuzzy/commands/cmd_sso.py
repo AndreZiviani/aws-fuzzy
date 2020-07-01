@@ -88,7 +88,8 @@ def login(ctx, **kwargs):
         sso_token = get_sso_credentials(SSO_CRED_DIR)
     except KeyError:
         ctx.log("Failed to get SSO credentials, trying to authenticate again")
-        ret = run(['aws', 'sso', 'login'])
+        ret = run(['aws', 'sso', 'login'],
+                  stdout=click.get_text_stream('stderr'))
         if ret.returncode != 0:
             ctx.log("Something went wrong trying to login")
             return
