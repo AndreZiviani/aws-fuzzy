@@ -9,6 +9,8 @@ from .common import set_cache
 import click
 import os
 import subprocess
+import boto3
+import re
 
 from iterfzf import iterfzf
 from datetime import datetime
@@ -16,7 +18,13 @@ from datetime import timedelta
 
 
 @click.command("ssh")
-@common_params(p=False)
+@click.option(
+    '-p',
+    '--profile',
+    default=os.getenv('AWS_PROFILE', 'default'),
+    show_default="$AWS_PROFILE",
+    show_envvar=True,
+    help='AWS Profile')
 @click.option(
     '-u',
     '--user',
@@ -35,79 +43,55 @@ from datetime import timedelta
 @pass_environment
 def cli(ctx, **kwargs):
     """SSH to EC2 instance"""
-    print(ctx)
-    return
 
-    if kwargs['account'] == 'all':
-        profile = 'all'
-    else:
-        profile = get_profile(kwargs['account'])
-        ctx.vlog(profile)
-        if profile != None:
-            kwargs['account'] = profile['sso_account_id']
-            profile = profile['name']
-        else:
-            # Error check
-            pass
+    profile = get_profile(kwargs['profile'])['name']
 
     if kwargs['cache']:
-        tmp = get_cache(ctx, "ssh", profile)
-        if tmp != None:
-            ret = tmp['instances']
+        ret = get_cache(ctx, "ssh", profile)
+        if ret != None:
+            instances = ret['instances']
         else:
-            ret = do_query(ctx, kwargs)
+            instances = get_instances()
             tmp = {
                 'instances':
-                ret,
+                instances,
                 'expires':
                 datetime.utcnow() + timedelta(seconds=kwargs['cache_time'])
             }
             set_cache(ctx, "ssh", profile, tmp)
 
     else:
-        ret = do_query(ctx, kwargs)
+        instances = get_instances()
 
-    do_fzf(ctx, kwargs, ret)
+    do_fzf(ctx, kwargs, instances)
 
 
-def do_query(ctx, kwargs):
-    ctx.vlog(kwargs)
-    kwargs['service'] = "AWS::EC2::Instance"
-    kwargs[
-        'select'] = "resourceId, accountId, configuration.privateIpAddress, tags"
-    f = f"resourceType like '{kwargs['service']}' AND " \
-         "configuration.state.name like 'running'"
+def get_instances():
+    ec2 = boto3.client('ec2')
+    all_instances = ec2.describe_instances(
+        Filters=[{
+            'Name': 'instance-state-name',
+            'Values': ['running']
+        }])['Reservations']
 
-    if kwargs['filter'] != "''":
-        kwargs['filter'] = f"{f}' AND {kwargs['filter']}"
-    else:
-        kwargs['filter'] = f"{f}"
+    instances = []
 
-    if kwargs['account'] != 'all':
-        kwargs['filter'] += f" AND accountId like '{kwargs['account']}'"
-    if kwargs['region'] != 'all':
-        kwargs['filter'] += f" AND awsRegion like '{kwargs['account']}'"
+    for tmp in all_instances:
+        for i in tmp['Instances']:
+            name = get_tag_value(i['Tags'], 'Name')
+            ip = i['NetworkInterfaces'][0]['PrivateIpAddress']
+            instance_id = i['InstanceId']
+            instances.append(f"{name} ({instance_id}) @ {ip}")
 
-    ret = query(ctx, kwargs)
+    return instances
 
-    if kwargs['pager']:
-        return
 
-    ctx.vlog("Return form query function:")
-    #ctx.vlog(ret)
-    out = []
-    for i in ret:
-        name = "<unnamed>"
-        tags = []
-        for t in i["tags"]:  # search for tag with key "Name"
-            tags.append(t['tag'])
-            if t["key"] == "Name":
-                name = t["value"]
-        out.append(
-            f'{name}\t{i["configuration"]["privateIpAddress"]}\t{i["accountId"]}\t{tags}'
-        )
+def get_tag_value(tags, key):
+    for t in tags:
+        if key in t['Key']:
+            return t['Value'].replace('"', '')
 
-    return out
+    return "Unnamed Instance"
 
 
 def do_fzf(ctx, kwargs, instances):
@@ -116,7 +100,8 @@ def do_fzf(ctx, kwargs, instances):
     if sel is None:
         return
 
-    name, ip, account, tags = sel.split('\t')
+    ctx.vlog(sel)
+    name, ip = re.findall('([\w-]+) \(i-\w+\) @ (.*)', sel)[0]
 
     if kwargs['key'] != "''":
         key = f"-i {kwargs['key']}"
@@ -128,7 +113,7 @@ def do_fzf(ctx, kwargs, instances):
     else:
         user = ''
 
-    ssh_command = f"ssh {key} {user} {ip}"
+    ssh_command = f"ssh {key} {user} {ip} # {name}"
 
     ctx.vlog("Executing:")
     ctx.vlog(ssh_command)
