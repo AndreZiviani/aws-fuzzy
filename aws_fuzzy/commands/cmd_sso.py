@@ -27,7 +27,7 @@ class SSO(common.Cache):
 
         self.set_account(Account)
 
-        self.get_sso_token()
+        self.sso_token = self.get_sso_token()
 
         c = self.get_cache(self.profile['name'])
         if c == None:
@@ -46,25 +46,31 @@ class SSO(common.Cache):
 
     def get_sso_token(self):
         list_of_files = glob.glob(f"{self.sso_dir}/*")
-        latest_cred = max(list_of_files, key=os.path.getctime)
+        try:
+            latest_cred = max(list_of_files, key=os.path.getctime)
 
-        with open(latest_cred, 'r') as f:
-            raw = f.read()
+            with open(latest_cred, 'r') as f:
+                raw = f.read()
 
-        j = json.loads(raw)
+            j = json.loads(raw)
 
-        expires = datetime.strptime(j['expiresAt'], '%Y-%m-%dT%H:%M:%SUTC')
-        if self.check_expired(expires):
+            expires = datetime.strptime(j['expiresAt'], '%Y-%m-%dT%H:%M:%SUTC')
+            if self.check_expired(expires):
+                raise
+            else:
+                self.sso_token = j["accessToken"]
+                return j["accessToken"]
+        except:
             self.ctx.log(
                 "Failed to get SSO credentials, trying to authenticate again")
-            ret = run(['aws', 'sso', 'login'])
+            ret = run(['aws', 'sso', 'login'],
+                      stdout=click.get_text_stream('stderr'))
             if ret.returncode != 0:
                 self.ctx.log("Something went wrong trying to login")
                 return None
-            sso_token = self.get_sso_token()
+            self.sso_token = self.get_sso_token()
 
-        self.sso_token = j["accessToken"]
-        return j["accessToken"]
+            return self.sso_token
 
     def set_credentials(self, credentials, expires):
         self.set_cache(self.profile['name'], {
