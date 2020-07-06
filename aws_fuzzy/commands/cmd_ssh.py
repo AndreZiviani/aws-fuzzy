@@ -5,6 +5,8 @@ from aws_fuzzy import common
 import click
 import os
 import subprocess
+import re
+import boto3
 
 from iterfzf import iterfzf
 from datetime import datetime
@@ -28,13 +30,46 @@ class SSH(common.Cache):
 
         self.set_account(Account)
 
+        self.instances = None
+
         c = self.get_cache(self.profile['name'])
         if c == None:
-            self.valid = False
-            self.cached = None
+            self.list_instances()
         else:
-            self.valid = True
-            self.cached = c['instances']
+            self.instances = c['instances']
+
+    def get_tag_value(self, tags, key):
+        for t in tags:
+            if key in t['Key']:
+                return t['Value'].replace('"', '')
+
+        return "Unnamed Instance"
+
+    def list_instances(self):
+        ec2 = boto3.client('ec2')
+        all_instances = ec2.describe_instances(
+            Filters=[{
+                'Name': 'instance-state-name',
+                'Values': ['running']
+            }])['Reservations']
+
+        instances = []
+
+        for tmp in all_instances:
+            for i in tmp['Instances']:
+                name = self.get_tag_value(i['Tags'], 'Name')
+                ip = i['NetworkInterfaces'][0]['PrivateIpAddress']
+                instance_id = i['InstanceId']
+                instances.append(f"{name} ({instance_id}) @ {ip}")
+
+        self.instances = instances
+        expires = datetime.utcnow() + timedelta(seconds=self.cache_time)
+        self.set_cache(self.profile['name'], {
+            'instances': instances,
+            'expires': expires
+        })
+
+        return instances
 
     def do_fzf(self, instances):
         sel = iterfzf(instances)
@@ -42,7 +77,7 @@ class SSH(common.Cache):
         if sel is None:
             return
 
-        name, ip, account, tags = sel.split('\t')
+        name, ip = re.findall('([\w-]+) \(i-\w+\) @ (.*)', sel)[0]
 
         ssh_command = 'ssh '
         if self.key:
@@ -50,7 +85,7 @@ class SSH(common.Cache):
         if self.user:
             ssh_command += f" -l {self.user} "
 
-        ssh_command += f" {ip}"
+        ssh_command += f" {ip} # {name}"
 
         self.ctx.vlog("Executing:")
         self.ctx.log(ssh_command)
@@ -62,23 +97,14 @@ class SSH(common.Cache):
             command, shell=True, executable=os.getenv('SHELL', '/bin/bash'))
 
 
-def to_fzf_format(l):
-    out = []
-    for i in l:
-        name = "<unnamed>"
-        tags = []
-        for t in i["tags"]:  # search for tag with key "Name"
-            tags.append(t['tag'])
-            if t["key"] == "Name":
-                name = t["value"]
-        out.append(
-            f'{name}\t{i["configuration"]["privateIpAddress"]}\t{i["accountId"]}\t{tags}'
-        )
-    return out
-
-
 @click.command("ssh")
-@common.common_params(p=False)
+@click.option(
+    '-p',
+    '--profile',
+    default=os.getenv('AWS_PROFILE', 'default'),
+    show_default="$AWS_PROFILE",
+    show_envvar=True,
+    help='AWS Profile')
 @click.option(
     '-u',
     '--user',
@@ -98,51 +124,10 @@ def to_fzf_format(l):
 def cli(ctx, **kwargs):
     """SSH to EC2 instance"""
 
-    ssh = SSH(ctx, kwargs['cache'], kwargs['account'], kwargs['key'],
+    ssh = SSH(ctx, kwargs['cache'], kwargs['profile'], kwargs['key'],
               kwargs['user'], kwargs['cache_time'])
 
-    if ssh.valid:
-        # Found cached results
-        ret = ssh.results
-    else:
-        # Scan account
-        _service = "AWS::EC2::Instance"
-        _select = "resourceId, accountId, configuration.privateIpAddress, tags"
-
-        _filter = f"resourceType like '{_service}' AND " \
-             "configuration.state.name like 'running'"
-
-        if kwargs['filter']:
-            _filter += f" AND {kwargs['filter']}"
-
-        if kwargs['account'] != 'all':
-            _filter += f" AND accountId like '{ssh.account_id}'"
-
-        if kwargs['region'] != 'all':
-            _filter += f" AND awsRegion like '{kwargs['region']}'"
-
-        query = Query(
-            ctx,
-            Service=_service,
-            Select=_select,
-            Filter=_filter,
-            Limit=kwargs['limit'],
-            Account=kwargs['account'],
-            Region=kwargs['region'],
-            Pager=kwargs['pager'])
-
-        if query.valid:
-            # Found cached results
-            if kwargs['pager']:
-                ctx.log(query.cached)
-                return
-            else:
-                tmp = query.cached
-        else:
-            # Query instances
-            tmp = query.query(kwargs['cache_time'])
-
-        ssh.do_fzf(to_fzf_format(tmp))
+    ssh.do_fzf(ssh.instances)
 
 
 def do_query(ctx, kwargs):
