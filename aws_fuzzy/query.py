@@ -57,8 +57,12 @@ class Query(common.Cache):
                 self.aggregator = ret['inventory']
             else:
                 aggs = self.client.describe_configuration_aggregators()
-                self.aggregator = aggs['ConfigurationAggregators'][0][
-                    'ConfigurationAggregatorName']
+                try:
+                    self.aggregator = aggs['ConfigurationAggregators'][0][
+                        'ConfigurationAggregatorName']
+                except IndexError:
+                    raise Exception(
+                        "Could not find any Configuration Aggregator")
 
                 expires = datetime.utcnow() + timedelta(
                     seconds=self.cache_time)
