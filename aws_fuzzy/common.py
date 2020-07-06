@@ -174,6 +174,18 @@ class Cache(Common):
         self.service = Service
         self.cache = False
         self.cache_time = Cache_time
+        self.remove_expired_items()
+
+    def remove_expired_items(self):
+        if self.cache == True:
+            count = 1
+            s = shelve.open(f"{self.cache_dir}/{self.service}")
+            for item in s:
+                if self.check_expired(s[item]["expires"]):
+                    count += 1
+                    del s[i]
+            self.ctx.vlog(f"Removed {count} expired items from cache")
+            s.close()
 
     def get_cache(self, item):
         if self.cache == True:
