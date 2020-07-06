@@ -134,21 +134,10 @@ def do_query(ctx, kwargs):
     ctx.vlog(kwargs)
     ret = query(ctx, kwargs)
 
-    if kwargs['pager']:
-        return
 
-    ctx.vlog("Return form query function:")
-    #ctx.vlog(ret)
-    out = []
-    for i in ret:
-        name = "<unnamed>"
-        tags = []
-        for t in i["tags"]:  # search for tag with key "Name"
-            tags.append(t['tag'])
-            if t["key"] == "Name":
-                name = t["value"]
-        out.append(
-            f'{name}\t{i["configuration"]["privateIpAddress"]}\t{i["accountId"]}\t{tags}'
-        )
+def get_tag_value(tags, key):
+    for t in tags:
+        if key in t['Key']:
+            return t['Value'].replace('"', '')
 
     return out
