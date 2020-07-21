@@ -23,7 +23,6 @@ class SSO(common.Cache):
         super().__init__(ctx, "sso", Cache_time)
 
         self.cache = Cache
-        self.client = boto3.client('sso')
 
         self.set_account(Account)
 
@@ -85,7 +84,8 @@ class SSO(common.Cache):
 
     def get_new_credentials(self):
 
-        ret = self.client.get_role_credentials(
+        client = boto3.client('sso')
+        ret = client.get_role_credentials(
             roleName=self.profile["sso_role_name"],
             accountId=self.profile["sso_account_id"],
             accessToken=self.sso_token)
@@ -109,6 +109,42 @@ class SSO(common.Cache):
     export AWS_SECURITY_TOKEN='{self.session_token}';
     export AWS_EXPIRES='{expires}';
         """)
+
+    def list_accounts(self, maxResults=100, region='us-east-1', profile=None):
+        if profile == None:
+            profile = self.profile['name']
+
+        session = boto3.Session(profile_name=profile)
+        client = session.client('sso', region_name=region)
+
+        ret = client.list_accounts(
+            accessToken=self.sso_token, maxResults=maxResults)['accountList']
+
+        accounts = []
+        for account in ret:
+            d = {}
+            d['name'] = account['accountName'].replace(' ', '_')
+            d['id'] = account['accountId']
+            roles = client.list_account_roles(
+                accountId=account['accountId'],
+                accessToken=self.sso_token,
+                maxResults=maxResults)['roleList']
+
+            if len(roles) > 1:
+                r = []
+                for role in roles:
+                    r.append(role['roleName'])
+
+                role = click.prompt(
+                    f"Found multiple roles for account '{account['accountName']} ({account['accountId']})': {r}"
+                )
+            else:
+                role = roles[0]['roleName']
+
+            d['role'] = role
+            accounts.append(d)
+
+        return accounts
 
 
 @cli.command()
@@ -140,3 +176,59 @@ def login(ctx, **kwargs):
         ctx.vlog("Could not find cached credentials or they are expired")
         sso.get_new_credentials()
         sso.print_credentials()
+
+
+@cli.command()
+@common.p_region(region='us-east-1')
+@common.p_cache()
+@common.p_cache_time()
+@pass_environment
+def configure(ctx, **kwargs):
+    """Configure AWS SSO"""
+
+    sso_url = None
+    sso_profiles = expanduser('~') + '/.aws/config'
+    sso_region = kwargs['region']
+
+    if os.path.isfile(sso_profiles):
+        ctx.log(
+            "AWS config file already exists, making a backup before updating")
+        p = common.Common(ctx)
+
+        if 'default' in p.profiles:
+            sso_url = p.profiles['default']['sso_start_url']
+            sso_region = p.profiles['default']['sso_region']
+
+        os.rename(sso_profiles, f"{sso_profiles}.bkp")
+
+    start = click.prompt("Enter SSO start url", default=sso_url)
+    region = click.prompt("Default region", default=sso_region)
+
+    f = open(sso_profiles, 'w')
+    f.write(f"""[default]
+sso_start_url = {start}
+sso_region = {region}
+sso_role_name = dummy
+sso_account_id = 00000000""")
+    f.close()
+
+    sso = SSO(
+        ctx,
+        Cache=kwargs['cache'],
+        Account='default',
+        Cache_time=kwargs['cache_time'])
+
+    accounts = sso.list_accounts(region=sso_region, profile='default')
+
+    f = open(sso_profiles, 'a')
+    for account in accounts:
+        f.write(f"""
+[profile {account['name']}]
+sso_start_url = {start}
+sso_region = {region}
+sso_account_id = {account['id']}
+sso_role_name = {account['role']}""")
+
+    f.close()
+
+    ctx.log("Done! Please check ~/.aws/config for your profiles")

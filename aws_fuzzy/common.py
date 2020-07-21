@@ -135,6 +135,9 @@ class Common():
         d = {}
         with open(f"{self.aws_dir}/config", 'r') as f:
             for l in f:
+                if not l.strip():  #if empty line
+                    continue
+
                 if l[0] == '[':
                     tmp = re.findall('\[(.*)\]', l)[0]
                     if 'profile' in tmp:
