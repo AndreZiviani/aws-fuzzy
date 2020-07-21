@@ -58,7 +58,7 @@ class SSH(common.Cache):
         for tmp in all_instances:
             for i in tmp['Instances']:
                 name = self.get_tag_value(i['Tags'], 'Name')
-                ip = i['NetworkInterfaces'][0]['PrivateIpAddress']
+                ip = i['PrivateIpAddress']
                 instance_id = i['InstanceId']
                 instances.append(f"{name} ({instance_id}) @ {ip}")
 
