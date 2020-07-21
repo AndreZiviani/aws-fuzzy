@@ -9,51 +9,18 @@ from os.path import expanduser
 from aws_fuzzy.cli import pass_environment
 
 
-def common_params(a="all", s=None, r="all", f=None, p=True, c=True, l=0):
+def p_account(account="all",
+              show_default=True,
+              show_envvar=True,
+              msg='Filter by accountid'):
     def params(func):
         @click.option(
             '-a',
             '--account',
-            default=a,
-            show_default=True,
-            show_envvar=True,
-            help='Filter by accountid')
-        @click.option(
-            '-s',
-            '--select',
-            default=s,
-            show_default=True,
-            show_envvar=True,
-            help='Custom select to filter results')
-        @click.option(
-            '-r',
-            '--region',
-            default=r,
-            show_default=True,
-            show_envvar=True,
-            help='Filter by region')
-        @click.option(
-            '-f',
-            '--filter',
-            default=f,
-            show_default=True,
-            show_envvar=True,
-            help='Use a custom query to filter results')
-        @click.option(
-            '--pager/--no-pager',
-            'pager',
-            flag_value=True,
-            default=p,
-            show_default=True,
-            show_envvar=True,
-            help='Send query results to pager')
-        @click.option(
-            '-l',
-            '--limit',
-            default=l,
-            show_default=True,
-            show_envvar=True,
-            help='Use a custom query to filter results')
+            default=account,
+            show_default=show_default,
+            show_envvar=show_envvar,
+            help=msg)
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
@@ -63,22 +30,125 @@ def common_params(a="all", s=None, r="all", f=None, p=True, c=True, l=0):
     return params
 
 
-def cache_params(cache=True, cache_time=3600):
+def p_select(select=None,
+             show_default=True,
+             show_envvar=True,
+             msg='Custom select to filter results'):
+    def params(func):
+        @click.option(
+            '-s',
+            '--select',
+            default=select,
+            show_default=show_default,
+            show_envvar=show_envvar,
+            help=msg)
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return params
+
+
+def p_region(region='all',
+             show_default=True,
+             show_envvar=True,
+             msg='Filter by region'):
+    def params(func):
+        @click.option(
+            '-r',
+            '--region',
+            default=region,
+            show_default=show_default,
+            show_envvar=show_envvar,
+            help=msg)
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return params
+
+
+def p_filter(filter='',
+             show_default=True,
+             show_envvar=True,
+             msg='Use a custom query to filter results'):
+    def params(func):
+        @click.option(
+            '-f',
+            '--filter',
+            default=filter,
+            show_default=show_default,
+            show_envvar=show_envvar,
+            help=msg)
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return params
+
+
+def p_pager(pager=True,
+            show_default=True,
+            show_envvar=True,
+            msg='Send query results to pager'):
+    def params(func):
+        @click.option(
+            '--pager/--no-pager',
+            'pager',
+            flag_value=True,
+            default=pager,
+            show_default=show_default,
+            show_envvar=show_envvar,
+            help=msg)
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return params
+
+
+def p_limit(limit=0,
+            show_default=True,
+            show_envvar=True,
+            msg='Limit the number of results'):
+    def params(func):
+        @click.option(
+            '-l',
+            '--limit',
+            default=limit,
+            show_default=show_default,
+            show_envvar=show_envvar,
+            help=msg)
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return params
+
+
+def p_cache(cache=True,
+            show_default=True,
+            show_envvar=True,
+            msg='Whether to use cached results'):
     def params(func):
         @click.option(
             '--cache/--no-cache',
             'cache',
             flag_value=True,
             default=cache,
-            show_default=True,
-            show_envvar=True,
-            help='Whether to use cached results')
-        @click.option(
-            '--cache-time',
-            default=cache_time,
-            show_default=True,
-            show_envvar=True,
-            help='Cache results TTL in seconds')
+            show_default=show_default,
+            show_envvar=show_envvar,
+            help=msg)
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
@@ -88,22 +158,38 @@ def cache_params(cache=True, cache_time=3600):
     return params
 
 
-def modify_none(ctx, param, value):
-    if value == "_none_":
-        return None
-    return value
+def p_cache_time(cache_time=3600,
+                 show_default=True,
+                 show_envvar=True,
+                 msg='Cache results TTL in seconds'):
+    def params(func):
+        @click.option(
+            '--cache-time',
+            default=cache_time,
+            show_default=show_default,
+            show_envvar=show_envvar,
+            help=msg)
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return params
 
 
-def query_params():
+def p_inventory(inventory=None,
+                show_default='First one found',
+                show_envvar=True,
+                msg='What inventory to use'):
     def params(func):
         @click.option(
             '-i',
             '--inventory',
-            default="_none_",
-            show_default="First one found",
-            show_envvar=True,
-            callback=modify_none,
-            help='Cache results TTL in seconds')
+            default=inventory,
+            show_default=show_default,
+            show_envvar=show_envvar,
+            help=msg)
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)

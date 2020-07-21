@@ -155,7 +155,8 @@ class SSO(common.Cache):
     show_default="$AWS_PROFILE",
     show_envvar=True,
     help='AWS Profile')
-@common.cache_params()
+@common.p_cache()
+@common.p_cache_time()
 @pass_environment
 def login(ctx, **kwargs):
     """Login to AWS SSO"""

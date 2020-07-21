@@ -119,7 +119,8 @@ class SSH(common.Cache):
     show_default="''",
     show_envvar=True,
     help='SSH key path')
-@common.cache_params()
+@common.p_cache()
+@common.p_cache_time()
 @pass_environment
 def cli(ctx, **kwargs):
     """SSH to EC2 instance"""

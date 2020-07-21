@@ -13,9 +13,15 @@ def cli(ctx, **kwargs):
 
 
 @cli.command()
-@common.common_params()
-@common.cache_params()
-@common.query_params()
+@common.p_account()
+@common.p_select()
+@common.p_region()
+@common.p_filter()
+@common.p_pager()
+@common.p_limit()
+@common.p_cache()
+@common.p_cache_time()
+@common.p_inventory()
 @pass_environment
 def vpcpeering(ctx, **kwargs):
     """Plot VPC Peering connections graph"""
