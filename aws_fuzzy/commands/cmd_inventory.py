@@ -7,7 +7,7 @@ import click
 @click.group("inventory")
 @click.pass_context
 def cli(ctx, **kwargs):
-    """Get all resources from AWS service"""
+    """Get all resources from AWS Config service"""
 
 
 def do_query(ctx, kwargs):

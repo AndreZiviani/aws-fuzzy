@@ -9,7 +9,7 @@ from pyvis.network import Network
 @click.group("plot")
 @click.pass_context
 def cli(ctx, **kwargs):
-    """Plot resources from AWS"""
+    """Plot AWS resources from AWS Config service"""
 
 
 @cli.command()
