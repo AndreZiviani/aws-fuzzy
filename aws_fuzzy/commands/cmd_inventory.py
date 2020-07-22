@@ -1,7 +1,7 @@
+import click
 from aws_fuzzy.cli import pass_environment
 from aws_fuzzy.query import Query
 from aws_fuzzy import common
-import click
 
 
 @click.group("inventory")
@@ -25,7 +25,7 @@ def do_query(ctx, kwargs):
     if query.valid:
         query.print()
     else:
-        query.query(kwargs['cache_time'])
+        query.query()
         query.print()
 
 

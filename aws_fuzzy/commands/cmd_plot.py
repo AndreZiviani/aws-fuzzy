@@ -1,9 +1,9 @@
+import click
+from pyvis.network import Network
+
 from aws_fuzzy.cli import pass_environment
 from aws_fuzzy.query import Query
 from aws_fuzzy import common
-import click
-import json
-from pyvis.network import Network
 
 
 @click.group("plot")
@@ -25,7 +25,7 @@ def cli(ctx, **kwargs):
 @pass_environment
 def vpcpeering(ctx, **kwargs):
     """Plot VPC Peering connections graph"""
-    kwargs['service'] = f"AWS::EC2::VPCPeeringConnection%"
+    kwargs['service'] = "AWS::EC2::VPCPeeringConnection%"
     kwargs['select'] = "configuration.requesterVpcInfo.ownerId" \
                         ", configuration.requesterVpcInfo.vpcId" \
                         ", configuration.accepterVpcInfo.vpcId" \
@@ -46,7 +46,7 @@ def vpcpeering(ctx, **kwargs):
         Cache_time=kwargs['cache_time'])
 
     if not query.valid:
-        query.query(kwargs['cache_time'])
+        query.query()
 
     ret = query.cached
 

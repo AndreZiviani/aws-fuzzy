@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-import click
 import sys
 import os
+from os.path import expanduser
+from pathlib import Path
 from pprint import pformat
+import click
 from pygments import highlight
 from pygments.lexers import PythonLexer
 from pygments.formatters import TerminalFormatter
-from os.path import expanduser
-from pathlib import Path
 
 CONTEXT_SETTINGS = dict(
     help_option_names=['-h', '--help'], auto_envvar_prefix="AWSFUZZY")
@@ -17,7 +17,7 @@ VERSION = open(
                  'VERSION')).read().strip()
 
 
-class Environment(object):
+class Environment():
     def __init__(self):
         self.verbose = False
 
@@ -57,7 +57,7 @@ class ComplexCLI(click.MultiCommand):
                              None, ["cli"])
         except ImportError as e:
             print(e)
-            return
+            return None
         return mod.cli
 
 

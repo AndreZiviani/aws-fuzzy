@@ -1,15 +1,16 @@
-from aws_fuzzy.cli import pass_environment
-from aws_fuzzy import common
-
-import click
 import os
 import glob
 import json
 
-import boto3
 from subprocess import run
 from datetime import datetime
 from os.path import expanduser
+
+import click
+import boto3
+
+from aws_fuzzy.cli import pass_environment
+from aws_fuzzy import common
 
 
 @click.group("sso")
@@ -29,7 +30,7 @@ class SSO(common.Cache):
         self.sso_token = self.get_sso_token()
 
         c = self.get_cache(self.profile['name'])
-        if c == None:
+        if c is None:
             self.valid = False
             self.access_key = None
             self.secret_key = None
@@ -56,14 +57,15 @@ class SSO(common.Cache):
             expires = datetime.strptime(j['expiresAt'], '%Y-%m-%dT%H:%M:%SUTC')
             if self.check_expired(expires):
                 raise
-            else:
-                self.sso_token = j["accessToken"]
-                return j["accessToken"]
+
+            self.sso_token = j["accessToken"]
+            return j["accessToken"]
         except:
             self.ctx.log(
                 "Failed to get SSO credentials, trying to authenticate again")
             ret = run(['aws', 'sso', 'login'],
-                      stdout=click.get_text_stream('stderr'))
+                      stdout=click.get_text_stream('stderr'),
+                      check=True)
             if ret.returncode != 0:
                 self.ctx.log("Something went wrong trying to login")
                 return None
@@ -111,7 +113,7 @@ class SSO(common.Cache):
         """)
 
     def list_accounts(self, maxResults=100, region='us-east-1', profile=None):
-        if profile == None:
+        if profile is None:
             profile = self.profile['name']
 
         session = boto3.Session(profile_name=profile)
@@ -172,11 +174,11 @@ def login(ctx, **kwargs):
         # We got valid cached credentials
         sso.print_credentials()
         return
-    else:
-        # Missing or expired cached credentials, requesting new one
-        ctx.vlog("Could not find cached credentials or they are expired")
-        sso.get_new_credentials()
-        sso.print_credentials()
+
+    # Missing or expired cached credentials, requesting new one
+    ctx.vlog("Could not find cached credentials or they are expired")
+    sso.get_new_credentials()
+    sso.print_credentials()
 
 
 @cli.command()

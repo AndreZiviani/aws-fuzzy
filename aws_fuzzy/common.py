@@ -1,4 +1,3 @@
-import click
 import functools
 import re
 import shelve
@@ -6,7 +5,7 @@ import shelve
 from datetime import datetime
 from os.path import expanduser
 
-from aws_fuzzy.cli import pass_environment
+import click
 
 
 def p_account(account="all",
@@ -212,10 +211,7 @@ class Common():
 
     def check_expired(self, date):
         now = datetime.utcnow()
-        if date < now:
-            return True
-        else:
-            return False
+        return date < now
 
     def _get_profiles(self):
         d = {}
@@ -225,16 +221,15 @@ class Common():
                     continue
 
                 if l[0] == '[':
-                    tmp = re.findall('\[(.*)\]', l)[0]
+                    tmp = re.findall(r'\[(.*)\]', l)[0]
                     if 'profile' in tmp:
                         profile_name = str(tmp.split()[1])
                     else:
                         profile_name = str(tmp)
                     d[profile_name] = {"name": profile_name}
                     continue
-                else:
-                    key, value = re.findall('([a-zA-Z_]+)\s*=\s*(.*)', l)[0]
-                    d[profile_name][key] = value
+                key, value = re.findall(r'([a-zA-Z_]+)\s*=\s*(.*)', l)[0]
+                d[profile_name][key] = value
         return d
 
     def set_account(self, account):
@@ -246,7 +241,7 @@ class Common():
                 # Got account ID
                 self.account_id = account
                 for k in self.profiles:
-                    if self.profiles[k]['sso_account_id'] == profile:
+                    if self.profiles[k]['sso_account_id'] == account:
                         self.profile = self.profiles[k]
             else:
                 # Got account name
@@ -266,18 +261,18 @@ class Cache(Common):
         self.remove_expired_items()
 
     def remove_expired_items(self):
-        if self.cache == True:
+        if self.cache:
             count = 1
             s = shelve.open(f"{self.cache_dir}/{self.service}")
             for item in s:
                 if self.check_expired(s[item]["expires"]):
                     count += 1
-                    del s[i]
+                    del s[item]
             self.ctx.vlog(f"Removed {count} expired items from cache")
             s.close()
 
     def get_cache(self, item):
-        if self.cache == True:
+        if self.cache:
             s = shelve.open(f"{self.cache_dir}/{self.service}")
             if item in s:
                 if self.check_expired(s[item]["expires"]):
@@ -294,7 +289,7 @@ class Cache(Common):
         return None
 
     def set_cache(self, item, value):
-        if self.cache == True:
+        if self.cache:
             s = shelve.open(f"{self.cache_dir}/{self.service}")
             s[item] = value
             s.close()

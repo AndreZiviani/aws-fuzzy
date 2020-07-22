@@ -1,16 +1,16 @@
-import boto3
 import os
 import json
-import click
 import sys
-
-from aws_fuzzy import common
 
 from datetime import timedelta
 from datetime import datetime
 from pygments import highlight
 from pygments.lexers import JsonLexer
 from pygments.formatters import TerminalFormatter
+
+import click
+import boto3
+from aws_fuzzy import common
 
 
 class Query(common.Cache):
@@ -51,9 +51,9 @@ class Query(common.Cache):
 
         self.expression = f"SELECT {self.select} WHERE {self.filter}"
 
-        if Aggregator == None:
+        if Aggregator is None:
             ret = self.get_cache(os.getenv('AWS_PROFILE', "unknown"))
-            if ret != None:
+            if ret is not None:
                 self.aggregator = ret['inventory']
             else:
                 aggs = self.client.describe_configuration_aggregators()
@@ -75,7 +75,7 @@ class Query(common.Cache):
         # TODO:
         # - Add account id to key when caching, or else we dont know which cache to return
         c = self.get_cache(self.expression)
-        if c == None:
+        if c is None:
             self.valid = False
             self.cached = None
         else:
@@ -83,7 +83,7 @@ class Query(common.Cache):
             self.cached = c['result']
 
     def print(self, Pager=None):
-        if Pager == None:
+        if Pager is None:
             Pager = self.pager
 
         if Pager and self.valid:
@@ -97,11 +97,11 @@ class Query(common.Cache):
                  Aggregator=None,
                  Limit=None,
                  NextToken=None):
-        if Expression == None:
+        if Expression is None:
             Expression = self.expression
-        if Aggregator == None:
+        if Aggregator is None:
             Aggregator = self.aggregator
-        if Limit == None:
+        if Limit is None:
             Limit = self.limit
 
         if NextToken:
@@ -110,21 +110,20 @@ class Query(common.Cache):
                 ConfigurationAggregatorName=Aggregator,
                 Limit=Limit,
                 NextToken=NextToken)
-        else:
-            return self.client.select_aggregate_resource_config(
-                Expression=Expression,
-                ConfigurationAggregatorName=Aggregator,
-                Limit=Limit)
+        return self.client.select_aggregate_resource_config(
+            Expression=Expression,
+            ConfigurationAggregatorName=Aggregator,
+            Limit=Limit)
 
-    def query(self, cache_time):
+    def query(self):
 
         if self.limit <= 100 and self.limit > 0:
             o = self.do_query()
             t = len(o['Results'])
         else:  # Iterate through pages until Limit is reached or end of results
             if self.limit > 0:
-                it = self.imit / 100
-                mod = self.imit % 100
+                it = self.limit / 100
+                mod = self.limit % 100
             else:
                 it = sys.maxsize
                 mod = 0

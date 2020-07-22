@@ -1,16 +1,16 @@
-from aws_fuzzy.cli import pass_environment
-from aws_fuzzy.query import Query
-from aws_fuzzy import common
-
-import click
 import os
 import subprocess
 import re
-import boto3
 
-from iterfzf import iterfzf
 from datetime import datetime
 from datetime import timedelta
+from iterfzf import iterfzf
+
+import click
+import boto3
+
+from aws_fuzzy.cli import pass_environment
+from aws_fuzzy import common
 
 
 class SSH(common.Cache):
@@ -33,7 +33,7 @@ class SSH(common.Cache):
         self.instances = None
 
         c = self.get_cache(self.profile['name'])
-        if c == None:
+        if c is None:
             self.list_instances()
         else:
             self.instances = c['instances']
@@ -77,7 +77,7 @@ class SSH(common.Cache):
         if sel is None:
             return
 
-        name, ip = re.findall('([\w-]+) \(i-\w+\) @ (.*)', sel)[0]
+        name, ip = re.findall(r'([\w-]+) \(i-\w+\) @ (.*)', sel)[0]
 
         ssh_command = 'ssh '
         if self.key:
