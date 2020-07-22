@@ -129,16 +129,3 @@ def cli(ctx, **kwargs):
               kwargs['user'], kwargs['cache_time'])
 
     ssh.do_fzf(ssh.instances)
-
-
-def do_query(ctx, kwargs):
-    ctx.vlog(kwargs)
-    ret = query(ctx, kwargs)
-
-
-def get_tag_value(tags, key):
-    for t in tags:
-        if key in t['Key']:
-            return t['Value'].replace('"', '')
-
-    return out
