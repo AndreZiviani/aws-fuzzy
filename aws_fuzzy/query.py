@@ -1,12 +1,6 @@
-import boto3
 import os
 import json
-import click
 import sys
-
-from .commands.common import get_profile
-from .commands.common import get_cache
-from .commands.common import set_cache
 
 from datetime import timedelta
 from datetime import datetime
@@ -14,132 +8,157 @@ from pygments import highlight
 from pygments.lexers import JsonLexer
 from pygments.formatters import TerminalFormatter
 
+import click
+import boto3
+from aws_fuzzy import common
 
-def do_query(ctx,
-             cache_time,
-             Expression=None,
-             ConfigurationAggregatorName=None,
-             Limit=None):
-    c = boto3.client('config')
 
-    if ConfigurationAggregatorName == None:
-        ret = get_cache(ctx, "inventory", os.getenv('AWS_PROFILE', "unknown"))
-        if ret != None:
-            ConfigurationAggregatorName = ret['inventory']
+class Query(common.Cache):
+    def __init__(self,
+                 ctx,
+                 Service=None,
+                 Select=None,
+                 Filter=None,
+                 Limit=None,
+                 Aggregator=None,
+                 Account=None,
+                 Region=None,
+                 Pager=True,
+                 Cache_time=3600):
+        super().__init__(ctx, "inventory", Cache_time)
+        self.pager = Pager
+        self.region = Region
+        self.set_account(Account)
 
+        self.service = Service
+        self.limit = Limit
+
+        self.client = boto3.client('config')
+        self.filter = f"resourceType like '{self.service}'"
+
+        if Select:
+            self.select = Select
         else:
-            aggs = c.describe_configuration_aggregators()
-            ConfigurationAggregatorName = aggs['ConfigurationAggregators'][0][
-                'ConfigurationAggregatorName']
+            self.select = "resourceId, accountId, awsRegion, configuration, tags"
 
-            tmp = {
-                'inventory': ConfigurationAggregatorName,
-                'expires': datetime.utcnow() + timedelta(seconds=cache_time)
-            }
-            set_cache(ctx, "inventory", os.getenv('AWS_PROFILE', "unknown"),
-                      tmp)
+        if Filter:
+            self.filter += f" AND {Filter}"
+        else:
+            if self.profile != 'all':
+                self.filter += f" AND accountId like '{self.account_id}'"
+            if self.region != 'all':
+                self.filter += f" AND awsRegion like '{self.region}'"
 
-    if Limit <= 100 and Limit > 0:
-        o = c.select_aggregate_resource_config(
+        self.expression = f"SELECT {self.select} WHERE {self.filter}"
+
+        if Aggregator is None:
+            ret = self.get_cache(os.getenv('AWS_PROFILE', "unknown"))
+            if ret is not None:
+                self.aggregator = ret['inventory']
+            else:
+                aggs = self.client.describe_configuration_aggregators()
+                try:
+                    self.aggregator = aggs['ConfigurationAggregators'][0][
+                        'ConfigurationAggregatorName']
+                except IndexError:
+                    raise Exception(
+                        "Could not find any Configuration Aggregator")
+
+                expires = datetime.utcnow() + timedelta(
+                    seconds=self.cache_time)
+                self.set_cache(
+                    os.getenv('AWS_PROFILE', "unknown"), {
+                        'inventory': self.aggregator,
+                        'expires': expires
+                    })
+
+        # TODO:
+        # - Add account id to key when caching, or else we dont know which cache to return
+        c = self.get_cache(self.expression)
+        if c is None:
+            self.valid = False
+            self.cached = None
+        else:
+            self.valid = True
+            self.cached = c['result']
+
+    def print(self, Pager=None):
+        if Pager is None:
+            Pager = self.pager
+
+        if Pager and self.valid:
+            click.echo_via_pager(
+                highlight(
+                    json.dumps(self.cached, indent=4), JsonLexer(),
+                    TerminalFormatter()))
+
+    def do_query(self,
+                 Expression=None,
+                 Aggregator=None,
+                 Limit=None,
+                 NextToken=None):
+        if Expression is None:
+            Expression = self.expression
+        if Aggregator is None:
+            Aggregator = self.aggregator
+        if Limit is None:
+            Limit = self.limit
+
+        if NextToken:
+            return self.client.select_aggregate_resource_config(
+                Expression=Expression,
+                ConfigurationAggregatorName=Aggregator,
+                Limit=Limit,
+                NextToken=NextToken)
+        return self.client.select_aggregate_resource_config(
             Expression=Expression,
-            ConfigurationAggregatorName=ConfigurationAggregatorName,
+            ConfigurationAggregatorName=Aggregator,
             Limit=Limit)
-        t = len(o['Results'])
-    else:  # Iterate through pages until Limit is reached or end of results
-        if Limit > 0:
-            it = Limit / 100
-            mod = Limit % 100
-        else:
-            it = sys.maxsize
-            mod = 0
 
-        o = c.select_aggregate_resource_config(
-            Expression=Expression,
-            ConfigurationAggregatorName=ConfigurationAggregatorName,
-            Limit=100)
+    def query(self):
 
-        tmp = o
-        i = 1
-        r = len(o['Results'])
-        t = r
-        ctx.vlog(f'Got {r} results')
-        while 'NextToken' in tmp and i < it:
-            tmp = c.select_aggregate_resource_config(
-                Expression=Expression,
-                ConfigurationAggregatorName=ConfigurationAggregatorName,
-                Limit=100,
-                NextToken=tmp['NextToken'])
+        if self.limit <= 100 and self.limit > 0:
+            o = self.do_query()
+            t = len(o['Results'])
+        else:  # Iterate through pages until Limit is reached or end of results
+            if self.limit > 0:
+                it = self.limit / 100
+                mod = self.limit % 100
+            else:
+                it = sys.maxsize
+                mod = 0
 
-            o['Results'].extend(tmp['Results'])
-            i += 1
-            r = len(tmp['Results'])
-            t += r
-            ctx.vlog(f'Got {r} results')
+            o = self.do_query(Limit=100)
 
-        if mod > 0:
-            tmp = c.select_aggregate_resource_config(
-                Expression=Expression,
-                ConfigurationAggregatorName=ConfigurationAggregatorName,
-                Limit=mod,
-                NextToken=tmp['NextToken'])
+            tmp = o
+            i = 1
+            r = len(o['Results'])
+            t = r
+            self.ctx.vlog(f'Got {r} results')
+            while 'NextToken' in tmp and i < it:
+                tmp = self.do_query(Limit=100, NextToken=tmp['NextToken'])
 
-            o['Results'].extend(tmp['Results'])
-            r = len(tmp['Results'])
-            t += r
-            ctx.vlog(f'Got {r} results')
+                o['Results'].extend(tmp['Results'])
+                i += 1
+                r = len(tmp['Results'])
+                t += r
+                self.ctx.vlog(f'Got {r} results')
 
-    ctx.vlog(f'Got a total of {t} results')
+            if mod > 0:
+                tmp = self.do_query(Limit=mod, NextToken=tmp['NextToken'])
 
-    j = [json.loads(r) for r in o['Results']]
+                o['Results'].extend(tmp['Results'])
+                r = len(tmp['Results'])
+                t += r
+                self.ctx.vlog(f'Got {r} results')
 
-    return j
+        self.ctx.vlog(f'Got a total of {t} results')
 
+        j = [json.loads(r) for r in o['Results']]
 
-def query(ctx, kwargs):
+        self.valid = True
+        self.cached = j
 
-    params = kwargs
-    if kwargs['select'] == None:
-        params[
-            'select'] = "resourceId, accountId, awsRegion, configuration, tags"
-
-    if kwargs['filter'] != "''":
-        params[
-            'filter'] = f"resourceType like '{kwargs['service']}' AND {kwargs['filter']}"
-        if kwargs['account'] != 'all':
-            account = get_profile(kwargs['account'])
-            params[
-                'filter'] += f" AND accountId like '{account['sso_account_id']}'"
-    else:
-        params['filter'] = f"resourceType like '{kwargs['service']}'"
-        if kwargs['account'] != 'all':
-            account = get_profile(kwargs['account'])
-            params[
-                'filter'] += f" AND accountId like '{account['sso_account_id']}'"
-        if kwargs['region'] != 'all':
-            params['filter'] += f" AND awsRegion like '{kwargs['account']}'"
-
-    params[
-        'expression'] = f"SELECT {kwargs['select']} WHERE {kwargs['filter']}"
-
-    ctx.vlog("params:")
-    ctx.vlog(params)
-
-    ret = get_cache(ctx, "inventory", params['expression'])
-    if ret == None:
-        ret = do_query(ctx, kwargs['cache_time'], params['expression'],
-                       kwargs['inventory'], kwargs['limit'])
-        tmp = {
-            'result': ret,
-            'expires':
-            datetime.utcnow() + timedelta(seconds=kwargs['cache_time'])
-        }
-        set_cache(ctx, "inventory", params['expression'], tmp)
-    else:
-        ret = ret['result']
-
-    if kwargs['pager']:
-        click.echo_via_pager(
-            highlight(
-                json.dumps(ret, indent=4), JsonLexer(), TerminalFormatter()))
-
-    return ret
+        expires = datetime.utcnow() + timedelta(seconds=self.cache_time)
+        self.set_cache(self.expression, {'result': j, 'expires': expires})
+        return j

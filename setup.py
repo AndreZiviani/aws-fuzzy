@@ -1,5 +1,5 @@
-from setuptools import setup
 import os
+from setuptools import setup
 
 setup(
     name="aws-fuzzy",

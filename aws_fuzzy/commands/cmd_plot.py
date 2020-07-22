@@ -1,27 +1,31 @@
-from aws_fuzzy.cli import pass_environment
-from aws_fuzzy.query import query
-from .common import common_params
-from .common import cache_params
-from .common import query_params
 import click
-import json
 from pyvis.network import Network
+
+from aws_fuzzy.cli import pass_environment
+from aws_fuzzy.query import Query
+from aws_fuzzy import common
 
 
 @click.group("plot")
 @click.pass_context
 def cli(ctx, **kwargs):
-    """Plot resources from AWS"""
+    """Plot AWS resources from AWS Config service"""
 
 
 @cli.command()
-@common_params()
-@cache_params()
-@query_params()
+@common.p_account()
+@common.p_select()
+@common.p_region()
+@common.p_filter()
+@common.p_pager()
+@common.p_limit()
+@common.p_cache()
+@common.p_cache_time()
+@common.p_inventory()
 @pass_environment
 def vpcpeering(ctx, **kwargs):
     """Plot VPC Peering connections graph"""
-    kwargs['service'] = f"AWS::EC2::VPCPeeringConnection%"
+    kwargs['service'] = "AWS::EC2::VPCPeeringConnection%"
     kwargs['select'] = "configuration.requesterVpcInfo.ownerId" \
                         ", configuration.requesterVpcInfo.vpcId" \
                         ", configuration.accepterVpcInfo.vpcId" \
@@ -29,7 +33,22 @@ def vpcpeering(ctx, **kwargs):
                         ", configuration.vpcPeeringConnectionId" \
                         ", tags.tag"
     kwargs['pager'] = False
-    ret = query(ctx, kwargs)
+
+    query = Query(
+        ctx,
+        Service=kwargs['service'],
+        Select=kwargs['select'],
+        Filter=kwargs['filter'],
+        Limit=kwargs['limit'],
+        Account=kwargs['account'],
+        Region=kwargs['region'],
+        Pager=kwargs['pager'],
+        Cache_time=kwargs['cache_time'])
+
+    if not query.valid:
+        query.query()
+
+    ret = query.cached
 
     net = Network(height="750px", width="100%")
     net.barnes_hut()
