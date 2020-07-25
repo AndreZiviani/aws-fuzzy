@@ -62,6 +62,7 @@ class Query(common.Cache):
 
         self.expression = f"SELECT {self.select} WHERE {self.filter}"
 
+        ctx.vlog(self.expression)
         if Aggregator is None:
             ret = self.get_cache(os.getenv('AWS_PROFILE', "unknown"))
             if ret is not None:
@@ -95,8 +96,10 @@ class Query(common.Cache):
 
     def print(self, Pager=None):
         if Pager is None:
-            Pager = self.pager
-
+            click.echo(
+                highlight(
+                    json.dumps(self.cached, indent=4), JsonLexer(),
+                    TerminalFormatter()))
         if Pager and self.valid:
             click.echo_via_pager(
                 highlight(
