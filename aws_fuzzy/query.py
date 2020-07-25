@@ -24,7 +24,8 @@ class Query(common.Cache):
                  Account=None,
                  Region=None,
                  Pager=True,
-                 Cache_time=3600):
+                 Cache_time=3600,
+                 Profile=None):
         super().__init__(ctx, "inventory", Cache_time)
         self.pager = Pager
         self.region = Region
@@ -33,7 +34,17 @@ class Query(common.Cache):
         self.service = Service
         self.limit = Limit
 
-        self.client = boto3.client('config')
+        if Profile is None:
+            self.client = boto3.client('config')
+        else:
+            ctx.vlog(f'Using profile: {Profile}')
+            sso = common.SSO(ctx, True, Profile, Cache_time)
+            self.client = boto3.Session(
+                aws_access_key_id=sso.access_key,
+                aws_secret_access_key=sso.secret_key,
+                aws_session_token=sso.session_token,
+                profile_name=Profile).client('config')
+
         self.filter = f"resourceType like '{self.service}'"
 
         if Select:

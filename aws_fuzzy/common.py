@@ -1,11 +1,16 @@
 import functools
 import re
 import shelve
+import json
+import glob
+import os
 
+from subprocess import run
 from datetime import datetime
 from os.path import expanduser
 
 import click
+import boto3
 
 
 def p_account(account="all",
@@ -198,6 +203,27 @@ def p_inventory(inventory=None,
     return params
 
 
+def p_profile(profile=None,
+              show_default='Current profile',
+              show_envvar=True,
+              msg='What profile to use'):
+    def params(func):
+        @click.option(
+            '-p',
+            '--profile',
+            default=profile,
+            show_default=show_default,
+            show_envvar=show_envvar,
+            help=msg)
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return params
+
+
 class Common():
     def __init__(self, ctx):
         self.aws_dir = expanduser("~") + "/.aws"
@@ -293,3 +319,133 @@ class Cache(Common):
             s = shelve.open(f"{self.cache_dir}/{self.service}")
             s[item] = value
             s.close()
+
+
+class SSO(Cache):
+    def __init__(self, ctx, Cache, Account, Cache_time):
+        super().__init__(ctx, "sso", Cache_time)
+
+        self.cache = Cache
+
+        self.set_account(Account)
+
+        self.sso_token = self.get_sso_token()
+
+        c = self.get_cache(self.profile['name'])
+        if c is None:
+            self.valid = False
+            self.access_key = None
+            self.secret_key = None
+            self.session_token = None
+            self.expiration = None
+        else:
+            c = c['credentials']
+            self.valid = True
+            self.access_key = c['accessKeyId']
+            self.secret_key = c['secretAccessKey']
+            self.session_token = c['sessionToken']
+            self.expiration = c['expiration']
+
+    def get_sso_token(self):
+        list_of_files = glob.glob(f"{self.sso_dir}/*")
+        try:
+            latest_cred = max(list_of_files, key=os.path.getctime)
+
+            with open(latest_cred, 'r') as f:
+                raw = f.read()
+
+            j = json.loads(raw)
+
+            expires = datetime.strptime(j['expiresAt'], '%Y-%m-%dT%H:%M:%SUTC')
+            if self.check_expired(expires):
+                raise
+
+            self.sso_token = j["accessToken"]
+            return j["accessToken"]
+        except:
+            self.ctx.log(
+                "Failed to get SSO credentials, trying to authenticate again")
+            ret = run(['aws', 'sso', 'login'],
+                      stdout=click.get_text_stream('stderr'),
+                      check=True)
+            if ret.returncode != 0:
+                self.ctx.log("Something went wrong trying to login")
+                return None
+            self.sso_token = self.get_sso_token()
+
+            return self.sso_token
+
+    def set_credentials(self, credentials, expires):
+        self.set_cache(self.profile['name'], {
+            "credentials": credentials,
+            "expires": expires,
+        })
+        self.valid = True
+        self.access_key = credentials['accessKeyId']
+        self.secret_key = credentials['secretAccessKey']
+        self.session_token = credentials['sessionToken']
+        self.expiration = credentials['expiration']
+
+    def get_new_credentials(self):
+
+        client = boto3.client('sso')
+        ret = client.get_role_credentials(
+            roleName=self.profile["sso_role_name"],
+            accountId=self.profile["sso_account_id"],
+            accessToken=self.sso_token)
+
+        credentials = ret["roleCredentials"]
+
+        expires = datetime.utcfromtimestamp(
+            int(credentials['expiration'] / 1000))
+
+        self.set_credentials(credentials, expires)
+
+        return credentials
+
+    def print_credentials(self):
+        expires = datetime.utcfromtimestamp(int(
+            self.expiration / 1000)).strftime('%Y-%m-%dT%H:%M:%SUTC')
+        print(f"""
+    export AWS_ACCESS_KEY_ID='{self.access_key}';
+    export AWS_SECRET_ACCESS_KEY='{self.secret_key}';
+    export AWS_SESSION_TOKEN='{self.session_token}';
+    export AWS_SECURITY_TOKEN='{self.session_token}';
+    export AWS_EXPIRES='{expires}';
+        """)
+
+    def list_accounts(self, maxResults=100, region='us-east-1', profile=None):
+        if profile is None:
+            profile = self.profile['name']
+
+        session = boto3.Session(profile_name=profile)
+        client = session.client('sso', region_name=region)
+
+        ret = client.list_accounts(
+            accessToken=self.sso_token, maxResults=maxResults)['accountList']
+
+        accounts = []
+        for account in ret:
+            d = {}
+            d['name'] = account['accountName'].replace(' ', '_')
+            d['id'] = account['accountId']
+            roles = client.list_account_roles(
+                accountId=account['accountId'],
+                accessToken=self.sso_token,
+                maxResults=maxResults)['roleList']
+
+            if len(roles) > 1:
+                r = []
+                for role in roles:
+                    r.append(role['roleName'])
+
+                role = click.prompt(
+                    f"Found multiple roles for account '{account['accountName']} ({account['accountId']})': {r}"
+                )
+            else:
+                role = roles[0]['roleName']
+
+            d['role'] = role
+            accounts.append(d)
+
+        return accounts
