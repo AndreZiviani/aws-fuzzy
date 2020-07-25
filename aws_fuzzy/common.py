@@ -203,10 +203,11 @@ def p_inventory(inventory=None,
     return params
 
 
-def p_profile(profile=None,
-              show_default='Current profile',
-              show_envvar=True,
-              msg='What profile to use'):
+def p_profile(
+        profile=os.getenv('AWS_PROFILE', 'default'),
+        show_default='$AWS_PROFILE',
+        show_envvar=True,
+        msg='What profile to use'):
     def params(func):
         @click.option(
             '-p',
