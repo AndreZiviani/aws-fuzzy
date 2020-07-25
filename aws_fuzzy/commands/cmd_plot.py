@@ -22,6 +22,7 @@ def cli(ctx, **kwargs):
 @common.p_cache()
 @common.p_cache_time()
 @common.p_inventory()
+@common.p_profile()
 @pass_environment
 def vpcpeering(ctx, **kwargs):
     """Plot VPC Peering connections graph"""
@@ -43,7 +44,8 @@ def vpcpeering(ctx, **kwargs):
         Account=kwargs['account'],
         Region=kwargs['region'],
         Pager=kwargs['pager'],
-        Cache_time=kwargs['cache_time'])
+        Cache_time=kwargs['cache_time'],
+        Profile=kwargs['profile'])
 
     if not query.valid:
         query.query()
