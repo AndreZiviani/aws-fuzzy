@@ -15,13 +15,7 @@ def cli(ctx, **kwargs):
 
 
 @cli.command()
-@click.option(
-    '-p',
-    '--profile',
-    default=os.getenv('AWS_PROFILE', 'default'),
-    show_default="$AWS_PROFILE",
-    show_envvar=True,
-    help='AWS Profile')
+@common.p_profile()
 @common.p_cache()
 @common.p_cache_time()
 @pass_environment
