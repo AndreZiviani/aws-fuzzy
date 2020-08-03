@@ -52,8 +52,7 @@ def vpcpeering(ctx, **kwargs):
 
     ret = query.cached
 
-    height = 750
-    net = Network(height=f"{height}px", width="100%")
+    net = Network(height=f"100%", width="100%")
     net.barnes_hut()
     net.show_buttons(filter_=['physics'])
 
