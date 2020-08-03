@@ -52,7 +52,7 @@ def vpcpeering(ctx, **kwargs):
 
     ret = query.cached
 
-    net = Network(height="750px", width="100%")
+    net = Network(height=f"100%", width="100%")
     net.barnes_hut()
     net.show_buttons(filter_=['physics'])
 
@@ -68,9 +68,22 @@ def vpcpeering(ctx, **kwargs):
         for t in tags:
             tag.append(t['tag'])
 
-        net.add_nodes([str(src_vpc), str(dst_vpc)],
-                      title=[str(src_id), str(dst_id)],
-                      label=[str(src_vpc), str(dst_vpc)])
+        src_name = query.account_ids.get(str(src_id),
+                                         {'name': str(src_id)})['name']
+        dst_name = query.account_ids.get(str(dst_id),
+                                         {'name': str(dst_id)})['name']
+        net.add_node(
+            str(src_vpc),
+            title=str(src_name),
+            group=str(src_name),
+            size=40,
+            label=f"{src_name}\n{src_vpc}")
+        net.add_node(
+            str(dst_vpc),
+            title=str(dst_name),
+            group=str(dst_name),
+            size=40,
+            label=f"{dst_name}\n{dst_vpc}")
 
         net.add_edge(str(src_vpc), str(dst_vpc), title=",".join(tag))
 

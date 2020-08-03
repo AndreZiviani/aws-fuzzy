@@ -229,7 +229,7 @@ class Common():
     def __init__(self, ctx):
         self.aws_dir = expanduser("~") + "/.aws"
         self.sso_dir = self.aws_dir + "/sso/cache"
-        self.profiles = self._get_profiles()
+        self.profiles, self.account_ids = self._get_profiles()
 
         self.profile = None
         self.account_id = None
@@ -242,6 +242,7 @@ class Common():
 
     def _get_profiles(self):
         d = {}
+        rd = {}
         with open(f"{self.aws_dir}/config", 'r') as f:
             for l in f:
                 if not l.strip():  #if empty line
@@ -257,7 +258,10 @@ class Common():
                     continue
                 key, value = re.findall(r'([a-zA-Z_]+)\s*=\s*(.*)', l)[0]
                 d[profile_name][key] = value
-        return d
+        for k, v in d.items():
+            account_id = d[k]['sso_account_id']
+            rd[account_id] = v
+        return d, rd
 
     def set_account(self, account):
         if account == 'all':
