@@ -147,9 +147,11 @@ Options:
 
 Commands:
   vpcpeering  Plot VPC Peering connections graph
+  securitygroups  Plot which SecurityGroups have a relationship with the...
 ```
 
-A HTML file containing the graph is saved in the current directory.
+A graph is generated in HTML format, each node is color coded with account name (based on profiles defined AWS config file) containing the resource, each edge represents a connection and have a tooltip showing the tag (in case of `vpcpeering`) or port (`securitygroup` mode).
+The HTML file containing the graph is saved in the current directory with the name `mygraph.html`.
 
 ## SSH
 
