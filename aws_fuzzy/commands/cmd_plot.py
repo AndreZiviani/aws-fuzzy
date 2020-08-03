@@ -7,10 +7,10 @@ from aws_fuzzy import common
 
 
 class Plot(common.Cache):
-    def __init__(self, ctx, Cache, Cache_time):
+    def __init__(self, ctx, Cache, Cache_time, Directed=False):
         super().__init__(ctx, "plot", Cache_time)
 
-        self.graph = Network(height="100%", width="100%")
+        self.graph = Network(height="100%", width="100%", directed=Directed)
         self.graph.barnes_hut()
         self.graph.show_buttons(filter_=['physics'])
 
@@ -119,7 +119,7 @@ def vpcpeering(ctx, **kwargs):
 def securitygroups(ctx, **kwargs):
     """Plot which SecurityGroups have a relationship with the desired SecurityGroup"""
 
-    plot = Plot(ctx, False, kwargs['cache_time'])
+    plot = Plot(ctx, False, kwargs['cache_time'], Directed=True)
 
     # get information on the desired sg
     query_sg = Query(
