@@ -334,8 +334,6 @@ class SSO(Cache):
 
         self.set_account(Account)
 
-        self.sso_token = self.get_sso_token()
-
         c = self.get_cache(self.profile['name'])
         if c is None:
             self.valid = False
@@ -392,6 +390,8 @@ class SSO(Cache):
         self.expiration = credentials['expiration']
 
     def get_new_credentials(self):
+
+        self.sso_token = self.get_sso_token()
 
         client = boto3.client('sso')
         ret = client.get_role_credentials(
