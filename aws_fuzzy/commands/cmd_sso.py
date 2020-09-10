@@ -18,6 +18,7 @@ def cli(ctx, **kwargs):
 @common.p_profile()
 @common.p_cache()
 @common.p_cache_time()
+@common.p_ask()
 @pass_environment
 def login(ctx, **kwargs):
     """Login to AWS SSO"""
@@ -26,7 +27,8 @@ def login(ctx, **kwargs):
         ctx,
         Cache=kwargs['cache'],
         Account=kwargs['profile'],
-        Cache_time=kwargs['cache_time'])
+        Cache_time=kwargs['cache_time'],
+        Ask=kwargs['ask'])
 
     ctx.vlog(kwargs)
     if sso.valid:
