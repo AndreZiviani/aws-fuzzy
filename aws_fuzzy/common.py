@@ -4,6 +4,7 @@ import shelve
 import json
 import glob
 import os
+import sys
 
 from subprocess import run
 from datetime import datetime
@@ -225,6 +226,28 @@ def p_profile(
     return params
 
 
+def p_ask(ask=False,
+          show_default=True,
+          show_envvar=True,
+          msg='Ask before continuing'):
+    def params(func):
+        @click.option(
+            '--ask/--no-ask',
+            'ask',
+            flag_value=True,
+            default=ask,
+            show_default=show_default,
+            show_envvar=show_envvar,
+            help=msg)
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return params
+
+
 class Common():
     def __init__(self, ctx):
         self.aws_dir = expanduser("~") + "/.aws"
@@ -327,10 +350,11 @@ class Cache(Common):
 
 
 class SSO(Cache):
-    def __init__(self, ctx, Cache, Account, Cache_time):
+    def __init__(self, ctx, Cache, Account, Cache_time, Ask=False):
         super().__init__(ctx, "sso", Cache_time)
 
         self.cache = Cache
+        self.ask = Ask
 
         self.set_account(Account)
 
@@ -366,8 +390,11 @@ class SSO(Cache):
             self.sso_token = j["accessToken"]
             return j["accessToken"]
         except:
-            self.ctx.log(
-                "Failed to get SSO credentials, trying to authenticate again")
+            self.ctx.log("Failed to get SSO credentials")
+            if self.ask:
+                if not click.confirm("Authenticate again?"):
+                    sys.exit(0)
+            self.ctx.log("Trying to authenticate again")
             ret = run(['aws', 'sso', 'login'],
                       stdout=click.get_text_stream('stderr'),
                       check=True)
