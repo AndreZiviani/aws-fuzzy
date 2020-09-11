@@ -392,7 +392,7 @@ class SSO(Cache):
         except:
             self.ctx.log("Failed to get SSO credentials")
             if self.ask:
-                if not click.confirm("Authenticate again?"):
+                if not click.confirm("Authenticate again?", err=True):
                     sys.exit(0)
             self.ctx.log("Trying to authenticate again")
             ret = run(['aws', 'sso', 'login'],
