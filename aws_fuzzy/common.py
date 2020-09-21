@@ -373,6 +373,16 @@ class SSO(Cache):
             self.session_token = c['sessionToken']
             self.expiration = c['expiration']
 
+    def authenticate(self):
+        ret = run(['aws', 'sso', 'login'],
+                  stdout=click.get_text_stream('stderr'),
+                  check=True)
+        if ret.returncode != 0:
+            self.ctx.log("Something went wrong trying to login")
+            return None
+
+        return self.sso_token
+
     def get_sso_token(self):
         list_of_files = glob.glob(f"{self.sso_dir}/*")
         try:
@@ -395,15 +405,11 @@ class SSO(Cache):
                 if not click.confirm("Authenticate again?", err=True):
                     sys.exit(0)
             self.ctx.log("Trying to authenticate again")
-            ret = run(['aws', 'sso', 'login'],
-                      stdout=click.get_text_stream('stderr'),
-                      check=True)
-            if ret.returncode != 0:
-                self.ctx.log("Something went wrong trying to login")
-                return None
-            self.sso_token = self.get_sso_token()
+            if self.authenticate() is not None:
+                self.sso_token = self.get_sso_token()
+                return self.sso_token
 
-            return self.sso_token
+            return None
 
     def set_credentials(self, credentials, expires):
         self.set_cache(self.profile['name'], {
@@ -421,10 +427,15 @@ class SSO(Cache):
         self.sso_token = self.get_sso_token()
 
         client = boto3.client('sso')
-        ret = client.get_role_credentials(
-            roleName=self.profile["sso_role_name"],
-            accountId=self.profile["sso_account_id"],
-            accessToken=self.sso_token)
+        try:
+            ret = client.get_role_credentials(
+                roleName=self.profile["sso_role_name"],
+                accountId=self.profile["sso_account_id"],
+                accessToken=self.sso_token)
+        except client.exceptions.UnauthorizedException:
+            self.ctx.vlog('AWS revoked our SSO token before expiration...')
+            self.authenticate()
+            return self.get_new_credentials()
 
         credentials = ret["roleCredentials"]
 
