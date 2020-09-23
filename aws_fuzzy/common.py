@@ -381,7 +381,7 @@ class SSO(Cache):
             self.ctx.log("Something went wrong trying to login")
             return None
 
-        return self.sso_token
+        return True
 
     def get_sso_token(self):
         list_of_files = glob.glob(f"{self.sso_dir}/*")
