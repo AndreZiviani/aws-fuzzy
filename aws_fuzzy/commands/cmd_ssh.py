@@ -57,7 +57,10 @@ class SSH(common.Cache):
 
         for tmp in all_instances:
             for i in tmp['Instances']:
-                name = self.get_tag_value(i['Tags'], 'Name')
+                try:
+                    name = self.get_tag_value(i['Tags'], 'Name')
+                except KeyError:
+                    name = '<unnamed>'
                 ip = i['PrivateIpAddress']
                 instance_id = i['InstanceId']
                 instances.append(f"{name} ({instance_id}) @ {ip}")
@@ -77,7 +80,7 @@ class SSH(common.Cache):
         if sel is None:
             return
 
-        name, ip = re.findall(r'([\w-]+) \(i-\w+\) @ (.*)', sel)[0]
+        name, ip = re.findall(r'([\w<>-]+) \(i-\w+\) @ (.*)', sel)[0]
 
         ssh_command = 'ssh '
         if self.key:
