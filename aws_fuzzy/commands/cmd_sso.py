@@ -59,9 +59,11 @@ def configure(ctx, **kwargs):
             "AWS config file already exists, making a backup before updating")
         p = common.Common(ctx)
 
-        if 'default' in p.profiles:
+        try:
             sso_url = p.profiles['default']['sso_start_url']
             sso_region = p.profiles['default']['sso_region']
+        except KeyError:
+            pass
 
         os.rename(sso_profiles, f"{sso_profiles}.bkp")
 
@@ -81,6 +83,7 @@ sso_account_id = 00000000""")
         Cache=kwargs['cache'],
         Account='default',
         Cache_time=kwargs['cache_time'])
+    sso.get_sso_token()
 
     accounts = sso.list_accounts(region=sso_region, profile='default')
 

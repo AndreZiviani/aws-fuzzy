@@ -282,8 +282,11 @@ class Common():
                 key, value = re.findall(r'([a-zA-Z_]+)\s*=\s*(.*)', l)[0]
                 d[profile_name][key] = value
         for k, v in d.items():
-            account_id = d[k]['sso_account_id']
-            rd[account_id] = v
+            try:
+                account_id = d[k]['sso_account_id']
+                rd[account_id] = v
+            except KeyError:
+                continue
         return d, rd
 
     def set_account(self, account):
