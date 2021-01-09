@@ -1,0 +1,150 @@
+package config
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+	"time"
+
+	"github.com/AndreZiviani/aws-fuzzy/internal/cache"
+	"github.com/AndreZiviani/aws-fuzzy/internal/sso"
+	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	config "github.com/aws/aws-sdk-go-v2/service/configservice"
+	configtypes "github.com/aws/aws-sdk-go-v2/service/configservice/types"
+	opentracing "github.com/opentracing/opentracing-go"
+	//"github.com/opentracing/opentracing-go/log"
+)
+
+// Pretty print json output
+func Print(pager bool, slices []string) error {
+
+	var prettyJSON bytes.Buffer
+
+	tmp := strings.Join(slices[:], ",")
+	tmp = fmt.Sprintf("[%s]", tmp)
+	_ = json.Indent(&prettyJSON, []byte(tmp), "", "  ")
+
+	if pager {
+		// less
+		cmd := exec.Command("less")
+		cmd.Stdin = strings.NewReader(prettyJSON.String())
+		cmd.Stdout = os.Stdout
+		return cmd.Run()
+	}
+
+	fmt.Printf("%s\n", prettyJSON.String())
+	return nil
+}
+
+func Config(ctx context.Context, p *ConfigCommand, subservice string) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "config")
+
+	ssoCreds, err := sso.SsoLogin(ctx)
+	if err != nil {
+		return err
+	}
+
+	creds, err := sso.GetCredentials(ctx, ssoCreds, p.Profile)
+	if err != nil {
+		return err
+	}
+
+	cfg, err := sso.NewAwsConfig(ctx, creds)
+	if err != nil {
+		return err
+	}
+
+	configclient := config.NewFromConfig(cfg)
+
+	// Check if we have a cached result of available aggregators
+	c, _ := cache.New("config")
+	j, err := c.Fetch(p.Profile)
+
+	aggregators := []configtypes.ConfigurationAggregator{}
+	if err == nil {
+		// We have valid cached credentials
+		_ = json.Unmarshal([]byte(j), &aggregators)
+	} else {
+		// Searching for available aggregators
+		spanGetAggregators, tmpctx := opentracing.StartSpanFromContext(ctx, "configgetaggregators")
+		tmp, err := configclient.DescribeConfigurationAggregators(tmpctx,
+			&config.DescribeConfigurationAggregatorsInput{},
+		)
+		if err != nil {
+			fmt.Printf("failed to describe configuration aggregators, %s\n", err)
+			return err
+		}
+		aggregators = tmp.ConfigurationAggregators
+
+		tmpj, _ := json.Marshal(aggregators)
+		c.Save(p.Profile, string(tmpj), time.Duration(10)*time.Minute)
+
+		spanGetAggregators.Finish()
+	}
+
+	// Filter results to an account, if specified by the user
+	accountFilter := ""
+	if p.Account != "" {
+		account, err := sso.GetAccount(p.Account)
+		if account == nil {
+			fmt.Printf("failed to get account %s, %s\n", p.Account, err)
+			return nil
+		}
+		accountFilter = fmt.Sprintf(" AND accountId like '%s'", account.AccountId)
+	}
+
+	spanQuery, tmpctx := opentracing.StartSpanFromContext(ctx, "configgetaggregators")
+	query := fmt.Sprintf("SELECT resourceId, accountId, awsRegion, configuration, tags WHERE resourceType like 'AWS::%s::%s' %s", p.Service, subservice, accountFilter)
+	result, err := configclient.SelectAggregateResourceConfig(tmpctx,
+		&config.SelectAggregateResourceConfigInput{
+			ConfigurationAggregatorName: aggregators[0].ConfigurationAggregatorName,
+			Expression:                  aws.String(query),
+		},
+	)
+	if err != nil {
+		fmt.Printf("failed to query config aggregator, %s\n", err)
+		return err
+	}
+	spanQuery.Finish()
+
+	span.Finish()
+	return Print(p.Pager, result.Results)
+
+}
+
+func wrapper(p *ConfigCommand, args []string, subservice string) error {
+	ctx := context.Background()
+
+	closer, err := tracing.InitTracing()
+	if err != nil {
+		fmt.Printf("failed to initialize tracing, %s\n", err)
+	}
+	defer closer.Close()
+
+	tracer := opentracing.GlobalTracer()
+	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "config")
+	defer span.Finish()
+
+	return Config(ctx, p, subservice)
+
+}
+
+func (p *Ec2ConfigCommand) Execute(args []string) error {
+	tmp := ConfigCommand{
+		Profile: p.Profile,
+		Pager:   p.Pager,
+		Service: p.Service,
+		Account: p.Account,
+	}
+	return wrapper(&tmp, args, p.Type)
+
+}
+
+func (p *ConfigCommand) Execute(args []string) error {
+	return wrapper(p, args, "%")
+}
