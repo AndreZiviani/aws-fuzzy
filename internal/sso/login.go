@@ -222,7 +222,7 @@ func GetCredentials(ctx context.Context, profile string) (*aws.Credentials, erro
 		// We have valid cached credentials
 		err = json.Unmarshal([]byte(j), &creds)
 		//PrintCredentials(creds)
-		//return creds, nil
+		return &creds, nil
 	}
 
 	cfg, err := NewAwsConfig(ctx, nil)
