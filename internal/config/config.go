@@ -44,12 +44,7 @@ func Print(pager bool, slices []string) error {
 func Config(ctx context.Context, p *ConfigCommand, subservice string) ([]string, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "config")
 
-	ssoCreds, err := sso.SsoLogin(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	creds, err := sso.GetCredentials(ctx, ssoCreds, p.Profile)
+	creds, err := sso.GetCredentials(ctx, p.Profile)
 	if err != nil {
 		return nil, err
 	}

@@ -9,8 +9,8 @@ import (
 	"github.com/AndreZiviani/aws-fuzzy/internal/cache"
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials/ssocreds"
 	"github.com/aws/aws-sdk-go-v2/service/sso"
-	ssotypes "github.com/aws/aws-sdk-go-v2/service/sso/types"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
 	opentracing "github.com/opentracing/opentracing-go"
 	"io/ioutil"
@@ -104,7 +104,6 @@ func NewSsoCredentials(ctx context.Context, cfg aws.Config, oidc *ssooidc.Client
 	sessionCredential, err := checkCachedSession(cfg, startUrl)
 
 	if err == nil {
-		// found a valid credential, skipping authentication
 		return &sessionCredential, nil
 	}
 
@@ -128,7 +127,7 @@ func NewSsoCredentials(ctx context.Context, cfg aws.Config, oidc *ssooidc.Client
 
 		deviceCredential.ClientId = oidcClient.ClientId
 		deviceCredential.ClientSecret = oidcClient.ClientSecret
-		deviceCredential.ExpiresAt = CustomTime{time.Unix(oidcClient.ClientSecretExpiresAt, 0)}
+		deviceCredential.ExpiresAt = rfc3339{time.Unix(oidcClient.ClientSecretExpiresAt, 0)}
 
 	}
 
@@ -170,7 +169,7 @@ func NewSsoCredentials(ctx context.Context, cfg aws.Config, oidc *ssooidc.Client
 	sessionCredential = SsoSessionCredentials{startUrl,
 		cfg.Region,
 		token.AccessToken,
-		CustomTime{now.Add(time.Duration(token.ExpiresIn) * time.Second)},
+		rfc3339{now.Add(time.Duration(token.ExpiresIn) * time.Second)},
 	}
 
 	err = cacheCredentials(&deviceCredential, &sessionCredential)
@@ -211,19 +210,19 @@ func SsoLogin(ctx context.Context) (*SsoSessionCredentials, error) {
 	return NewSsoCredentials(ctx, cfg, oidc, startUrl)
 }
 
-func GetCredentials(ctx context.Context, ssocreds *SsoSessionCredentials, profile string) (*ssotypes.RoleCredentials, error) {
+func GetCredentials(ctx context.Context, profile string) (*aws.Credentials, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ssorolecreds")
 	defer span.Finish()
 
 	c, _ := cache.New("sso")
 	j, err := c.Fetch(profile)
 
-	creds := &ssotypes.RoleCredentials{}
+	creds := aws.Credentials{}
 	if err == nil {
 		// We have valid cached credentials
 		err = json.Unmarshal([]byte(j), &creds)
 		//PrintCredentials(creds)
-		return creds, nil
+		//return creds, nil
 	}
 
 	cfg, err := NewAwsConfig(ctx, nil)
@@ -239,43 +238,34 @@ func GetCredentials(ctx context.Context, ssocreds *SsoSessionCredentials, profil
 	ssoclient := sso.NewFromConfig(cfg)
 
 	account := profiles[profile]
-	tmpcreds, err := ssoclient.GetRoleCredentials(ctx,
-		&sso.GetRoleCredentialsInput{
-			AccessToken: ssocreds.AccessToken,
-			AccountId:   &account.AccountId,
-			RoleName:    &account.Role,
-		},
-	)
-	creds = tmpcreds.RoleCredentials
+	provider := ssocreds.New(ssoclient, account.AccountId, account.Role, account.StartUrl)
 
+	creds, err = provider.Retrieve(ctx)
 	if err != nil {
 		fmt.Printf("failed to get role credentials, %s\n", err)
-		return nil, err
+		SsoLogin(ctx)
+		return GetCredentials(ctx, profile)
 	}
 
-	now := time.Now()
-	when := time.Unix(creds.Expiration/1000, 0)
-	exp := when.Unix() - now.Unix()
-
 	tmp, _ := json.Marshal(creds)
-	c.Save(profile, string(tmp), time.Duration(exp)*time.Second)
+	c.Save(profile, string(tmp), creds.Expires.Sub(time.Now()))
 
-	return creds, nil
+	return &creds, nil
 
 }
 
-func PrintCredentials(creds *ssotypes.RoleCredentials) {
+func PrintCredentials(creds *aws.Credentials) {
 	fmt.Printf(
 		"export AWS_ACCESS_KEY_ID='%s'\n"+
 			"export AWS_SECRET_ACCESS_KEY='%s'\n"+
 			"export AWS_SESSION_TOKEN='%s'\n"+
 			"export AWS_SECURITY_TOKEN='%s'\n"+
 			"export AWS_EXPIRES='%s'\n",
-		aws.ToString(creds.AccessKeyId),
-		aws.ToString(creds.SecretAccessKey),
-		aws.ToString(creds.SessionToken),
-		aws.ToString(creds.SessionToken),
-		time.Unix(creds.Expiration/1000, 0).String(),
+		creds.AccessKeyID,
+		creds.SecretAccessKey,
+		creds.SessionToken,
+		creds.SessionToken,
+		creds.Expires.String(),
 	)
 }
 
@@ -293,8 +283,7 @@ func (p *LoginCommand) Execute(args []string) error {
 	spanSso, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssologincmd")
 	defer spanSso.Finish()
 
-	ssoCreds, err := SsoLogin(ctx)
-	creds, err := GetCredentials(ctx, ssoCreds, p.Profile)
+	creds, err := GetCredentials(ctx, p.Profile)
 	PrintCredentials(creds)
 
 	return err

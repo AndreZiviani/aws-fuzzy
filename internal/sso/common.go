@@ -2,13 +2,13 @@ package sso
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
-	ssotypes "github.com/aws/aws-sdk-go-v2/service/sso/types"
-	ststypes "github.com/aws/aws-sdk-go-v2/service/sts/types"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"gopkg.in/ini.v1"
 	"io"
 	"os"
@@ -33,63 +33,46 @@ type RoleCredentials struct {
 	AccessKey    *string
 	SecretKey    *string
 	SessionToken *string
-	Expires      CustomTime
+	Expires      rfc3339
 }
 
 type SsoDeviceCredentials struct {
-	ClientId     *string    `json:"clientId"`
-	ClientSecret *string    `json:"clientSecret"`
-	ExpiresAt    CustomTime `json:"expiresAt"`
+	ClientId     *string `json:"clientId"`
+	ClientSecret *string `json:"clientSecret"`
+	ExpiresAt    rfc3339 `json:"expiresAt"`
 }
 
 type SsoSessionCredentials struct {
-	StartUrl    *string    `json:"startUrl"`
-	Region      string     `json:"region"`
-	AccessToken *string    `json:"accessToken"`
-	ExpiresAt   CustomTime `json:"expiresAt"`
+	StartUrl    *string `json:"startUrl"`
+	Region      string  `json:"region"`
+	AccessToken *string `json:"accessToken"`
+	ExpiresAt   rfc3339 `json:"expiresAt"`
 }
 
-type CustomTime struct {
+type rfc3339 struct {
 	time.Time
 }
 
-type CredentialsProvider struct {
-	//*ssotypes.RoleCredentials
-	*ststypes.Credentials
-}
-
-const ctLayout = "2006-01-02T15:04:05UTC"
-
 var nilTime = (time.Time{}).UnixNano()
 
-func (ct *CustomTime) UnmarshalJSON(b []byte) (err error) {
-	s := strings.Trim(string(b), "\"")
-	if s == "null" {
-		ct.Time = time.Time{}
-		return
+func (ct *rfc3339) UnmarshalJSON(b []byte) (err error) {
+	var value string
+
+	if err := json.Unmarshal(b, &value); err != nil {
+		return err
 	}
-	ct.Time, err = time.Parse(ctLayout, s)
-	return
+
+	parse, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return fmt.Errorf("expected RFC3339 timestamp: %w", err)
+	}
+
+	ct.Time = parse
+	return nil
 }
 
-func (ct *CustomTime) MarshalJSON() ([]byte, error) {
-	if ct.Time.UnixNano() == nilTime {
-		return []byte("null"), nil
-	}
-	return []byte(fmt.Sprintf("\"%s\"", ct.Time.Format(ctLayout))), nil
-}
-
-func (cp CredentialsProvider) Retrieve(c context.Context) (aws.Credentials, error) {
-	if cp.Credentials == nil {
-		return aws.Credentials{}, errors.New("invalid credentials")
-	}
-
-	return aws.Credentials{
-		AccessKeyID:     aws.ToString(cp.AccessKeyId),
-		SecretAccessKey: aws.ToString(cp.SecretAccessKey),
-		SessionToken:    aws.ToString(cp.SessionToken),
-		Expires:         aws.ToTime(cp.Expiration),
-	}, nil
+func (ct *rfc3339) MarshalJSON() ([]byte, error) {
+	return json.Marshal(ct.Time)
 }
 
 func CopyFile(src, dst string) error {
@@ -213,7 +196,7 @@ func LoadSsoProfiles() (map[string]AwsProfile, error) {
 
 }
 
-func NewAwsConfig(ctx context.Context, creds *ssotypes.RoleCredentials, retryables ...string) (aws.Config, error) {
+func NewAwsConfig(ctx context.Context, creds *aws.Credentials, retryables ...string) (aws.Config, error) {
 	var cfg aws.Config
 	var err error
 
@@ -245,15 +228,11 @@ func NewAwsConfig(ctx context.Context, creds *ssotypes.RoleCredentials, retryabl
 	}
 
 	if creds != nil {
-		tmp := time.Unix(creds.Expiration, 0)
-		cfg.Credentials = CredentialsProvider{
-			Credentials: &ststypes.Credentials{
-				AccessKeyId:     creds.AccessKeyId,
-				SecretAccessKey: creds.SecretAccessKey,
-				SessionToken:    creds.SessionToken,
-				Expiration:      &tmp,
-			},
-		}
+		cfg.Credentials = credentials.NewStaticCredentialsProvider(
+			creds.AccessKeyID,
+			creds.SecretAccessKey,
+			creds.SessionToken,
+		)
 	}
 
 	return cfg, nil
