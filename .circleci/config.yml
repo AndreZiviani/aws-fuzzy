@@ -15,7 +15,7 @@ jobs:
 
       - upx/install
 
-      - run: curl -sL https://git.io/goreleaser | bash -s release --rm-dist -p 3
+      - run: curl -sL https://git.io/goreleaser | bash -s release --rm-dist -p 2
 
       - save_cache:
           key: go-mod-v4-{{ checksum "go.sum" }}
