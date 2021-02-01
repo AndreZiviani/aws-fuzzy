@@ -19,7 +19,8 @@ func FuzzyFind(list *ec2.DescribeInstancesOutput) (*ec2types.Instance, error) {
 	idx, err := fuzzyfinder.Find(
 		instances,
 		func(i int) string {
-			return aws.ToString(instances[i].PrivateIpAddress)
+			main := fmt.Sprintf("%s (%s)", GetTag(instances[i].Tags, "Name"), aws.ToString(instances[i].PrivateIpAddress))
+			return main
 		},
 		fuzzyfinder.WithPreviewWindow(
 			func(i, width, _ int) string {
