@@ -12,6 +12,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.0.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.0.0
 	github.com/faabiosr/cachego v0.16.1
+	github.com/go-echarts/go-echarts/v2 v2.2.3
 	github.com/jessevdk/go-flags v1.4.0
 	github.com/ktr0731/go-fuzzyfinder v0.3.2
 	github.com/mattn/go-sqlite3 v1.14.6

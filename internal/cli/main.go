@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"github.com/AndreZiviani/aws-fuzzy/internal/chart"
 	"github.com/AndreZiviani/aws-fuzzy/internal/config"
 	"github.com/AndreZiviani/aws-fuzzy/internal/ssh"
 	"github.com/AndreZiviani/aws-fuzzy/internal/sso"
@@ -13,5 +14,6 @@ func Run() {
 	sso.Init(Parser)
 	ssh.Init(Parser)
 	config.Init(Parser)
+	chart.Init(Parser)
 	Parser.Parse()
 }

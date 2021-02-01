@@ -172,6 +172,7 @@ func WriteSsoProfiles(profiles map[string]AwsProfile) error {
 	}
 
 	f, err := os.Create(configPath)
+
 	if err != nil {
 		fmt.Printf("failed to write SSO profiles, %s\n", err)
 		return err

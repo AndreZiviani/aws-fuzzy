@@ -41,22 +41,22 @@ func Print(pager bool, slices []string) error {
 	return nil
 }
 
-func Config(ctx context.Context, p *ConfigCommand, subservice string) error {
+func Config(ctx context.Context, p *ConfigCommand, subservice string) ([]string, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "config")
 
 	ssoCreds, err := sso.SsoLogin(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	creds, err := sso.GetCredentials(ctx, ssoCreds, p.Profile)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	cfg, err := sso.NewAwsConfig(ctx, creds)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	configclient := config.NewFromConfig(cfg)
@@ -77,7 +77,7 @@ func Config(ctx context.Context, p *ConfigCommand, subservice string) error {
 		)
 		if err != nil {
 			fmt.Printf("failed to describe configuration aggregators, %s\n", err)
-			return err
+			return nil, err
 		}
 		aggregators = tmp.ConfigurationAggregators
 
@@ -93,13 +93,19 @@ func Config(ctx context.Context, p *ConfigCommand, subservice string) error {
 		account, err := sso.GetAccount(p.Account)
 		if account == nil {
 			fmt.Printf("failed to get account %s, %s\n", p.Account, err)
-			return nil
+			return nil, err
 		}
 		accountFilter = fmt.Sprintf(" AND accountId like '%s'", account.AccountId)
 	}
 
-	spanQuery, tmpctx := opentracing.StartSpanFromContext(ctx, "configgetaggregators")
-	query := fmt.Sprintf("SELECT resourceId, accountId, awsRegion, configuration, tags WHERE resourceType like 'AWS::%s::%s' %s", p.Service, subservice, accountFilter)
+	spanQuery, tmpctx := opentracing.StartSpanFromContext(ctx, "configquery")
+
+	filter := fmt.Sprintf("resourceType like 'AWS::%s::%s'", p.Service, subservice)
+	if p.Filter != "" {
+		filter = p.Filter
+	}
+	query := fmt.Sprintf("SELECT %s WHERE %s %s", p.Select, filter, accountFilter)
+
 	result, err := configclient.SelectAggregateResourceConfig(tmpctx,
 		&config.SelectAggregateResourceConfigInput{
 			ConfigurationAggregatorName: aggregators[0].ConfigurationAggregatorName,
@@ -108,12 +114,12 @@ func Config(ctx context.Context, p *ConfigCommand, subservice string) error {
 	)
 	if err != nil {
 		fmt.Printf("failed to query config aggregator, %s\n", err)
-		return err
+		return nil, err
 	}
 	spanQuery.Finish()
 
 	span.Finish()
-	return Print(p.Pager, result.Results)
+	return result.Results, nil
 
 }
 
@@ -130,7 +136,8 @@ func wrapper(p *ConfigCommand, args []string, subservice string) error {
 	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "config")
 	defer span.Finish()
 
-	return Config(ctx, p, subservice)
+	results, _ := Config(ctx, p, subservice)
+	return Print(p.Pager, results)
 
 }
 
@@ -138,8 +145,11 @@ func (p *Ec2ConfigCommand) Execute(args []string) error {
 	tmp := ConfigCommand{
 		Profile: p.Profile,
 		Pager:   p.Pager,
-		Service: p.Service,
 		Account: p.Account,
+		Select:  p.Select,
+		Filter:  p.Filter,
+		Limit:   p.Limit,
+		Service: p.Service,
 	}
 	return wrapper(&tmp, args, p.Type)
 

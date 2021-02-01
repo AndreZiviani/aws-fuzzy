@@ -13,6 +13,9 @@ type ConfigCommand struct {
 	Profile string `short:"p" long:"profile" env:"AWS_PROFILE" default:"default" description:"What profile to use"`
 	Pager   bool   `long:"pager" description:"Pipe output to less"`
 	Account string `short:"a" long:"account" description:"Filter Config resources to this account"`
+	Select  string `short:"s" long:"select" default:"resourceId, accountId, awsRegion, configuration, tags" description:"Custom select to filter results"`
+	Filter  string `short:"f" long:"filter" description:"Use a custom query to filter results"`
+	Limit   int    `short:"l" long:"limit" default:"0" description:"Limit the number of results"`
 	Service string
 }
 
