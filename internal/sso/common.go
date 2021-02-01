@@ -53,8 +53,6 @@ type rfc3339 struct {
 	time.Time
 }
 
-var nilTime = (time.Time{}).UnixNano()
-
 func (ct *rfc3339) UnmarshalJSON(b []byte) (err error) {
 	var value string
 
