@@ -32,9 +32,10 @@ func FuzzyFind(list *ec2.DescribeInstancesOutput) (*ec2types.Instance, error) {
 					iam = aws.ToString(instances[i].IamInstanceProfile.Arn)
 				}
 
-				return fmt.Sprintf("Name: nome\nInstanceId: %s\nPrivateIP: %s\nInstanceType: %s\nIAM: %s\nImageId: %s\n",
-					aws.ToString(instances[i].InstanceId), aws.ToString(instances[i].PrivateIpAddress),
-					instances[i].InstanceType, iam, aws.ToString(instances[i].ImageId),
+				return fmt.Sprintf("Name: %s\nInstanceId: %s\nPrivateIP: %s\nInstanceType: %s\nIAM: %s\nImageId: %s\n",
+					GetTag(instances[i].Tags, "Name"), aws.ToString(instances[i].InstanceId),
+					aws.ToString(instances[i].PrivateIpAddress), instances[i].InstanceType,
+					iam, aws.ToString(instances[i].ImageId),
 				)
 			},
 		),
