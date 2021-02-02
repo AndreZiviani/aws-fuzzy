@@ -124,7 +124,6 @@ func (p *SshCommand) Execute(args []string) error {
 		return err
 	}
 
-	return nil
 	DoSsh(p.User, p.Key, aws.ToString(instance.PrivateIpAddress))
 	return nil
 
