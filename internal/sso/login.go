@@ -21,7 +21,6 @@ import (
 func checkExpired(kind string, path string) (interface{}, error) {
 	jsonFile, err := os.Open(path)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 	defer jsonFile.Close()
