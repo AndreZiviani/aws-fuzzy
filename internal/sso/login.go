@@ -143,7 +143,8 @@ func NewSsoCredentials(ctx context.Context, cfg aws.Config, oidc *ssooidc.Client
 	}
 
 	// Prompt user to signin using the browser
-	fmt.Printf(
+	// Print to stderr to not interfere with shell exec
+	fmt.Fprintf(os.Stderr,
 		"AWS SSO login required.\n"+
 			"Attempting to open the SSO authorization page in your default browser.\n"+
 			"If the browser does not open or you wish to use a different device to\n"+
