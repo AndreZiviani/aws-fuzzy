@@ -1,6 +1,7 @@
 package sso
 
 import (
+	"bufio"
 	"context"
 	"crypto/sha1"
 	"encoding/json"
@@ -226,7 +227,7 @@ func SsoLogin(ctx context.Context) (*SsoSessionCredentials, error) {
 	return NewSsoCredentials(ctx, cfg, oidc, startUrl)
 }
 
-func GetCredentials(ctx context.Context, profile string) (*aws.Credentials, error) {
+func GetCredentials(ctx context.Context, profile string, ask bool) (*aws.Credentials, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ssorolecreds")
 	defer span.Finish()
 
@@ -239,6 +240,15 @@ func GetCredentials(ctx context.Context, profile string) (*aws.Credentials, erro
 		err = json.Unmarshal([]byte(j), &creds)
 		//PrintCredentials(creds)
 		return &creds, nil
+	}
+
+	if ask {
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Fprintf(os.Stderr, "Authenticate again? (y/N) ")
+		text, _ := reader.ReadString('\n')
+		if text[0] != 'y' && text[0] != 'Y' {
+			os.Exit(0)
+		}
 	}
 
 	cfg, err := NewAwsConfig(ctx, nil)
@@ -260,7 +270,8 @@ func GetCredentials(ctx context.Context, profile string) (*aws.Credentials, erro
 	if err != nil {
 		fmt.Printf("failed to get role credentials, %s\n", err)
 		SsoLogin(ctx)
-		return GetCredentials(ctx, profile)
+		// if we get here we have an expired sso token and user realy wants to login, dont need to ask again
+		return GetCredentials(ctx, profile, false)
 	}
 
 	tmp, _ := json.Marshal(creds)
@@ -299,7 +310,7 @@ func (p *LoginCommand) Execute(args []string) error {
 	spanSso, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssologincmd")
 	defer spanSso.Finish()
 
-	creds, err := GetCredentials(ctx, p.Profile)
+	creds, err := GetCredentials(ctx, p.Profile, p.Ask)
 	PrintCredentials(creds)
 
 	return err
