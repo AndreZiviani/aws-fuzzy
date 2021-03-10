@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"gopkg.in/ini.v1"
@@ -194,35 +193,11 @@ func LoadSsoProfiles() (map[string]AwsProfile, error) {
 
 }
 
-func NewAwsConfig(ctx context.Context, creds *aws.Credentials, retryables ...string) (aws.Config, error) {
-	var cfg aws.Config
-	var err error
-
-	if len(retryables) > 0 {
-
-		cfg, err = config.LoadDefaultConfig(ctx,
-			// default if not specified
-			config.WithRegion("us-east-1"), config.WithRetryer(func() aws.Retryer {
-				tmp := retry.AddWithMaxBackoffDelay(retry.NewStandard(), time.Second*1)
-				tmp = retry.AddWithMaxAttempts(tmp, 0)
-				return retry.AddWithErrorCodes(tmp, retryables...)
-			}))
-
-		if err != nil {
-			fmt.Printf("unable to load SDK config, %v\n", err)
-			return aws.Config{}, err
-		}
-
-	} else {
-
-		// Load AWS config defaulting to us-east-1 region if not specified
-		cfg, err = config.LoadDefaultConfig(ctx,
-			// default if not specified
-			config.WithRegion("us-east-1"))
-		if err != nil {
-			fmt.Printf("unable to load SDK config, %v\n", err)
-			return aws.Config{}, err
-		}
+func NewAwsConfig(ctx context.Context, creds *aws.Credentials, opts ...func(*config.LoadOptions) error) (aws.Config, error) {
+	cfg, err := config.LoadDefaultConfig(ctx, opts...)
+	if err != nil {
+		fmt.Printf("unable to load SDK config, %v\n", err)
+		return aws.Config{}, err
 	}
 
 	if creds != nil {

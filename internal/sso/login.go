@@ -9,6 +9,8 @@ import (
 	"github.com/AndreZiviani/aws-fuzzy/internal/cache"
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials/ssocreds"
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
@@ -200,7 +202,21 @@ func SsoLogin(ctx context.Context) (*SsoSessionCredentials, error) {
 	}
 
 	// New AWS config with custom retryer
-	cfg, err := NewAwsConfig(ctx, nil, "AuthorizationPendingException")
+	retryer := config.WithRetryer(
+		func() aws.Retryer {
+			return retry.AddWithErrorCodes(
+				retry.AddWithMaxBackoffDelay(
+					retry.AddWithMaxAttempts(
+						retry.NewStandard(), // new empty retryer
+						0,                   // retry forever
+					),
+					time.Second*1, // wait 1 second between retries
+				),
+				"AuthorizationPendingException", // retry even if we get this error
+			)
+		})
+
+	cfg, err := NewAwsConfig(ctx, nil, retryer)
 	if err != nil {
 		return nil, err
 	}
