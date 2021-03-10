@@ -112,22 +112,22 @@ func openBrowser(url string) {
 
 }
 
-func GetAccount(account string) (*AwsProfile, error) {
+func GetAccount(account string) (*string, *AwsProfile, error) {
 	profiles, _ := LoadSsoProfiles()
 
 	if profile, ok := profiles[account]; ok {
 		// account is a profile name
-		return &profile, nil
+		return &account, &profile, nil
 	}
 
 	// account is an account id
-	for _, v := range profiles {
+	for k, v := range profiles {
 		if v.AccountId == account {
-			return &v, nil
+			return &k, &v, nil
 		}
 	}
 
-	return nil, errors.New("could not find account")
+	return nil, nil, errors.New("could not find account")
 }
 
 func NewSsoProfiles() map[string]AwsProfile {

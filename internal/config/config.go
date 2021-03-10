@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -44,7 +45,7 @@ func Print(pager bool, slices []string) error {
 func Config(ctx context.Context, p *ConfigCommand, subservice string) ([]string, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "config")
 
-	creds, err := sso.GetCredentials(ctx, p.Profile)
+	creds, err := sso.GetCredentials(ctx, p.Profile, false)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +86,7 @@ func Config(ctx context.Context, p *ConfigCommand, subservice string) ([]string,
 	// Filter results to an account, if specified by the user
 	accountFilter := ""
 	if p.Account != "" {
-		account, err := sso.GetAccount(p.Account)
+		_, account, err := sso.GetAccount(p.Account)
 		if account == nil {
 			fmt.Printf("failed to get account %s, %s\n", p.Account, err)
 			return nil, err

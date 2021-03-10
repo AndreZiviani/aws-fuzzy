@@ -50,7 +50,7 @@ func GetInstances(ctx context.Context, profile string) (*ec2.DescribeInstancesOu
 		//return instances, nil
 	}
 
-	creds, err := sso.GetCredentials(ctx, profile)
+	creds, err := sso.GetCredentials(ctx, profile, false)
 	if err != nil {
 		return nil, err
 	}
