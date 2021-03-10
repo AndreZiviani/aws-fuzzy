@@ -17,16 +17,6 @@ import (
 	"time"
 )
 
-func GetTag(tags []ec2types.Tag, key string) string {
-	// Get tag Name
-	for _, tag := range tags {
-		if aws.ToString(tag.Key) == key {
-			return aws.ToString(tag.Value)
-		}
-	}
-	return "<missing Name>"
-}
-
 func DoSsh(user, key, ip string) {
 	cmd := exec.Command("ssh", "-l", user, "-i", key, ip)
 	cmd.Stdout = os.Stdout

@@ -3,6 +3,7 @@ package ssh
 import (
 	"fmt"
 
+	"github.com/AndreZiviani/aws-fuzzy/internal/common"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
@@ -19,7 +20,7 @@ func FuzzyFind(list *ec2.DescribeInstancesOutput) (*ec2types.Instance, error) {
 	idx, err := fuzzyfinder.Find(
 		instances,
 		func(i int) string {
-			main := fmt.Sprintf("%s (%s)", GetTag(instances[i].Tags, "Name"), aws.ToString(instances[i].PrivateIpAddress))
+			main := fmt.Sprintf("%s (%s)", common.GetEC2Tag(instances[i].Tags, "Name", "<missing name>"), aws.ToString(instances[i].PrivateIpAddress))
 			return main
 		},
 		fuzzyfinder.WithPreviewWindow(
@@ -34,7 +35,7 @@ func FuzzyFind(list *ec2.DescribeInstancesOutput) (*ec2types.Instance, error) {
 				}
 
 				return fmt.Sprintf("Name: %s\nInstanceId: %s\nPrivateIP: %s\nInstanceType: %s\nIAM: %s\nImageId: %s\n",
-					GetTag(instances[i].Tags, "Name"), aws.ToString(instances[i].InstanceId),
+					common.GetEC2Tag(instances[i].Tags, "Name", "<missing name>"), aws.ToString(instances[i].InstanceId),
 					aws.ToString(instances[i].PrivateIpAddress), instances[i].InstanceType,
 					iam, aws.ToString(instances[i].ImageId),
 				)
