@@ -75,7 +75,13 @@ func Config(ctx context.Context, p *ConfigCommand, subservice string) ([]string,
 			fmt.Printf("failed to describe configuration aggregators, %s\n", err)
 			return nil, err
 		}
+
 		aggregators = tmp.ConfigurationAggregators
+
+		if len(aggregators) == 0 {
+			fmt.Printf("could not find any aggregators")
+			return nil, errors.New("could not find any aggregators")
+		}
 
 		tmpj, _ := json.Marshal(aggregators)
 		c.Save(p.Profile, string(tmpj), time.Duration(10)*time.Minute)
