@@ -37,7 +37,7 @@ func GetInstances(ctx context.Context, profile string) (*ec2.DescribeInstancesOu
 		// We have valid cached credentials
 		err = json.Unmarshal([]byte(j), &instances)
 
-		//return instances, nil
+		return instances, nil
 	}
 
 	creds, err := sso.GetCredentials(ctx, profile, false)
