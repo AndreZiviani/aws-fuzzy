@@ -2,3 +2,5 @@
 *.swp
 artifacts/*
 dist/*
+*.html
+main
