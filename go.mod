@@ -26,4 +26,4 @@ require (
 	gopkg.in/ini.v1 v1.62.0
 )
 
-replace github.com/go-echarts/go-echarts/v2 => github.com/AndreZiviani/go-echarts/v2 v2.2.11
+replace github.com/go-echarts/go-echarts/v2 => github.com/AndreZiviani/go-echarts/v2 v2.2.13
