@@ -6,12 +6,17 @@ import (
 
 type ChartCommand struct {
 	Profile string `short:"p" long:"profile" env:"AWS_PROFILE" default:"default" description:"What profile to use"`
-	User    string `short:"u" long:"user" env:"AWSFUZZY_SSH_USER" default:"$USER" description:"Username to use with SSH"`
-	Key     string `short:"k" long:"key" env:"AWSFUZZY_SSH_KEY" default:"~/.ssh/id_rsa" description:"Key to use with SSH"`
+	Region  string `short:"r" long:"region" env:"AWS_REGION" default:"us-east-1" description:"What region to use"`
+}
+
+type NMCommand struct {
+	Profile string `short:"p" long:"profile" env:"AWS_PROFILE" default:"default" description:"What profile to use"`
+	Region  string `short:"r" long:"region" env:"AWS_REGION" default:"us-east-1" description:"What region to use"`
 }
 
 var (
 	chartCommand ChartCommand
+	nmCommand    NMCommand
 )
 
 func Init(parser *flags.Parser) {
@@ -29,4 +34,9 @@ func Init(parser *flags.Parser) {
 		"Chart peering relationship",
 		"Chart peering relationship",
 		&chartCommand)
+
+	cmd.AddCommand("nm",
+		"Chart NetworkManager topology",
+		"Chart NetworkManager topology",
+		&nmCommand)
 }
