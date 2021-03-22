@@ -262,7 +262,7 @@ func (p *NMCommand) Execute(args []string) error {
 	tree, err := NetworkManager(ctx, p)
 
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	g := NewTree("Global Networks")
