@@ -79,7 +79,6 @@ func Config(ctx context.Context, p *ConfigCommand, subservice string) ([]string,
 		aggregators = tmp.ConfigurationAggregators
 
 		if len(aggregators) == 0 {
-			fmt.Printf("could not find any aggregators")
 			return nil, errors.New("could not find any aggregators")
 		}
 
