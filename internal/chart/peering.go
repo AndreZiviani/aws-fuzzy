@@ -77,7 +77,7 @@ func (p *PeeringCommand) Execute(args []string) error {
 
 	page := components.NewPage()
 	page.AddCharts(graph)
-	f, err := os.Create("peering.html")
+	f, err := os.Create("graph.html")
 	if err != nil {
 		panic(err)
 	}
