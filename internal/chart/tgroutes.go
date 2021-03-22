@@ -19,53 +19,53 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
-func waitTGChannel(c chan<- []ec2types.TransitGatewayAttachment, wg *sync.WaitGroup) {
+type tgAttachmentRoutine struct {
+	Index       int
+	Subnet      *string
+	Attachments []ec2types.TransitGatewayAttachment
+}
+
+func waitTGChannel(c chan<- *tgAttachmentRoutine, wg *sync.WaitGroup) {
 	wg.Wait()
 	close(c)
 }
 
-func getTGAttachmentsRoutine(ctx context.Context, ec2client *ec2.Client, attachmentId string, c chan<- []ec2types.TransitGatewayAttachment, wg *sync.WaitGroup) {
+func getTGAttachmentsRoutine(ctx context.Context, ec2client *ec2.Client, i int, subnet *string, attachmentId string, c chan<- *tgAttachmentRoutine, wg *sync.WaitGroup) {
 	defer wg.Done()
 	attachments, _ := vpc.GetTransitGatewayAttachmentsByAttachment(ctx, ec2client, attachmentId)
-	c <- attachments
-}
-
-func getSubnetFromTable(attachments []ec2types.TransitGatewayAttachment, table *vpc.DescribeTransitGatewayRouteTablesOutput) string {
-	// find destination cidr block
-	for _, route := range table.Routes {
-		if aws.ToString(route.TransitGatewayAttachments[0].TransitGatewayAttachmentId) == aws.ToString(attachments[0].TransitGatewayAttachmentId) {
-			return aws.ToString(route.DestinationCidrBlock)
-		}
-
+	c <- &tgAttachmentRoutine{
+		Index:       i, // so we can keep the order later
+		Subnet:      subnet,
+		Attachments: attachments,
 	}
-	return ""
 }
 
 func processTables(ctx context.Context, ec2client *ec2.Client, tables []*vpc.DescribeTransitGatewayRouteTablesOutput) ([]*opts.TreeData, error) {
 	tableNode := make([]*opts.TreeData, 0)
 
 	for _, table := range tables {
-		ipRanges := make([]*opts.TreeData, 0)
+		ipRanges := make([]*opts.TreeData, len(table.Routes))
 
-		c := make(chan []ec2types.TransitGatewayAttachment)
+		c := make(chan *tgAttachmentRoutine)
 		var wg sync.WaitGroup
 
-		for _, ipRange := range table.Routes {
+		for i, ipRange := range table.Routes {
 			wg.Add(1)
 
 			//TODO: iterate attachments
 			attachmentId := aws.ToString(ipRange.TransitGatewayAttachments[0].TransitGatewayAttachmentId)
 
 			// Describe attachments in parallel
-			go getTGAttachmentsRoutine(ctx, ec2client, attachmentId, c, &wg)
+			go getTGAttachmentsRoutine(ctx, ec2client, i, ipRange.DestinationCidrBlock, attachmentId, c, &wg)
 		}
 
 		// Wait for all routines to finish, then close channel to free main thread
 		go waitTGChannel(c, &wg)
 
-		for attachments := range c {
+		for attachmentsRoutine := range c {
+			attachments := attachmentsRoutine.Attachments
 
-			subnet := getSubnetFromTable(attachments, table)
+			subnet := aws.ToString(attachmentsRoutine.Subnet)
 
 			//TODO: iterate attachments
 			account, _, err := sso.GetAccount(aws.ToString(attachments[0].ResourceOwnerId))
@@ -90,7 +90,7 @@ func processTables(ctx context.Context, ec2client *ec2.Client, tables []*vpc.Des
 				Children: destination,
 			}
 
-			ipRanges = append(ipRanges, ipNode)
+			ipRanges[attachmentsRoutine.Index] = ipNode
 		}
 		tmp := &opts.TreeData{
 			Name:     table.Name,
