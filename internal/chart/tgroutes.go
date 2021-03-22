@@ -135,7 +135,7 @@ func (p *TGroutesCommand) Execute(args []string) error {
 	tableNode, _ := processTables(ctx, ec2client, tables) // root children
 
 	rootNode := []opts.TreeData{
-		opts.TreeData{
+		{
 			Children: tableNode,
 		},
 	}
