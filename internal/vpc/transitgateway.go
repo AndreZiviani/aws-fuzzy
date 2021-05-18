@@ -175,7 +175,7 @@ func DescribeTransitGatewayRegistrationsFromARN(ctx context.Context, transitGate
 }
 
 func DescribeTransitGatewayRouteTables(ctx context.Context, ec2client *ec2.Client) ([]*DescribeTransitGatewayRouteTablesOutput, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "describetransitgateway")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "describe transitgateway route tables")
 	defer span.Finish()
 
 	tmp, err := ec2client.DescribeTransitGatewayRouteTables(ctx, &ec2.DescribeTransitGatewayRouteTablesInput{})

@@ -1,10 +1,13 @@
 package chart
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"os"
+	"sort"
 	"sync"
 
 	"github.com/AndreZiviani/aws-fuzzy/internal/common"
@@ -40,11 +43,18 @@ func getTGAttachmentsRoutine(ctx context.Context, ec2client *ec2.Client, i int, 
 	}
 }
 
+type TreeDataIp struct {
+	Name     string
+	Children []*net.IPNet
+}
+
 func processTables(ctx context.Context, ec2client *ec2.Client, tables []*vpc.DescribeTransitGatewayRouteTablesOutput) ([]*opts.TreeData, error) {
 	tableNode := make([]*opts.TreeData, 0)
 
 	for _, table := range tables {
-		ipRanges := make([]*opts.TreeData, len(table.Routes))
+		var ipRanges []*opts.TreeData
+		ipRanges = make([]*opts.TreeData, 0) // cant know beforehand how many destinations
+		nodeMapIp := make(map[string]*TreeDataIp)
 
 		c := make(chan *tgAttachmentRoutine)
 		var wg sync.WaitGroup
@@ -79,19 +89,31 @@ func processTables(ctx context.Context, ec2client *ec2.Client, tables []*vpc.Des
 				aws.ToString(attachments[0].ResourceId),
 			)
 
-			destination := []*opts.TreeData{
-				{
-					Name: name,
-				},
+			resourceId := aws.ToString(attachments[0].ResourceId)
+			node, ok := nodeMapIp[resourceId]
+			if !ok {
+				nodeMapIp[resourceId] = &TreeDataIp{
+					Name:     name,
+					Children: make([]*net.IPNet, 0),
+				}
+				node = nodeMapIp[resourceId]
 			}
+			_, netsubnet, _ := net.ParseCIDR(subnet)
+			node.Children = append(node.Children, netsubnet)
 
-			ipNode := &opts.TreeData{
-				Name:     subnet,
-				Children: destination,
-			}
-
-			ipRanges[attachmentsRoutine.Index] = ipNode
 		}
+
+		for _, v := range nodeMapIp {
+			sort.Slice(v.Children, func(i, j int) bool {
+				return bytes.Compare(v.Children[i].IP, v.Children[j].IP) < 0
+			})
+			tmp := make([]*opts.TreeData, 0)
+			for _, i := range v.Children {
+				tmp = append(tmp, &opts.TreeData{Name: i.String()})
+			}
+			ipRanges = append(ipRanges, &opts.TreeData{Name: v.Name, Children: tmp})
+		}
+
 		tmp := &opts.TreeData{
 			Name:     table.Name,
 			Children: ipRanges,
