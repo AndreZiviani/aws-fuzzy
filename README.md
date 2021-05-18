@@ -125,11 +125,13 @@ Help Options:
   -h, --help      Show this help message
 
 Available commands:
-  peering  Chart peering relationship
+  nm        Chart NetworkManager topology
+  peering   Chart peering relationship
+  tgroutes  Chart TransitGateway route tables
 ```
 
-A graph is generated in HTML format, each node is color coded with account name (based on profiles defined AWS config file) containing the resource, each edge represents a connection and have a tooltip showing the tag (in case of `vpcpeering`) or port (`securitygroup` mode).
-The HTML file containing the graph is saved in the current directory with the name `graph.html`.
+A graph is generated in HTML format, with account name based on profiles defined AWS config file.
+The HTML file containing the graph is saved in the current directory.
 
 ## SSH
 
