@@ -61,7 +61,7 @@ func GetInstances(ctx context.Context, profile string) (*ec2.DescribeInstancesOu
 					Values: []string{"running"},
 				},
 			},
-			MaxResults: 1000,
+			MaxResults: aws.Int32(1000),
 		},
 	)
 	if err != nil {
@@ -108,7 +108,7 @@ func (p *SshCommand) Execute(args []string) error {
 
 	span.Finish()
 
-	instance, err := FuzzyFind(instances)
+	instance, err := tui(instances)
 	if err != nil {
 		fmt.Printf("failed to select instance, %s\n", err)
 		return err
