@@ -110,7 +110,6 @@ func (p *SshCommand) Execute(args []string) error {
 
 	instance, err := tui(instances)
 	if err != nil {
-		fmt.Printf("failed to select instance, %s\n", err)
 		return err
 	}
 
