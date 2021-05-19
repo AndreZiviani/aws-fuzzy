@@ -199,7 +199,7 @@ func NewTui() *Tui {
 			t.resourceList.InsertItem(
 				-t.resourceList.GetItemCount()-1,
 				tview.TranslateANSI(
-					fmt.Sprintf("%d %s (%s)", v.Item.Index(), common.GetEC2Tag(i.Tags, "Name", "<missing name>"), aws.ToString(i.PrivateIpAddress)),
+					fmt.Sprintf("%s (%s)", common.GetEC2Tag(i.Tags, "Name", "<missing name>"), aws.ToString(i.PrivateIpAddress)),
 				),
 				tview.TranslateANSI(v.HighlightResult()),
 				0, nil,
