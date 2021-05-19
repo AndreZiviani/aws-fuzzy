@@ -18,6 +18,13 @@ builds:
     goarm:
       - 6
       - 7
+    ignore:
+      - goos: darwin
+        goarch: arm
+      - goos: windows
+        goarch: arm
+      - goos: windows
+        goarch: arm64
     main: ./cmd/aws-fuzzy/main.go
     hooks:
       post:
