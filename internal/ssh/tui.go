@@ -3,48 +3,24 @@ package ssh
 import (
 	"bytes"
 	"fmt"
-	"regexp"
 
 	"github.com/AndreZiviani/aws-fuzzy/internal/common"
 	"github.com/AndreZiviani/fzf-wrapper/v2"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
-type Tui struct {
-	app             *tview.Application
-	flex            *tview.Flex
-	input           *tview.InputField
-	resourceList    *tview.List
-	resourceDetails *tview.TextView
-	fzf             *fzfwrapper.Wrapper
-	instances       []ec2types.Instance
-	selected        *ec2types.Instance
-	instanceIdx     []int
+type Instance struct {
+	ec2types.Instance
 }
 
-// removes only the color customization at the
-// beging of the string, if exists
-// does NOT remove other customizations
-func removeLineColor(list *tview.List, id int) {
-	currentText, currentSecondary := list.GetItemText(id)
-	re := regexp.MustCompile(`^\[[a-zA-Z0-9:-]+\]`)
-	tmp := re.ReplaceAllString(currentText, "${1}")
-	list.SetItemText(id, tmp, currentSecondary)
-
-}
-func boldItem(list *tview.List, id int) {
-	if list.GetItemCount() == 0 {
-		return
-	}
-	currentText, currentSecondary := list.GetItemText(id)
-	list.SetItemText(id, fmt.Sprintf("[::b]%s", currentText), currentSecondary)
+func (i Instance) PrintName() string {
+	return fmt.Sprintf("%s (%s)", common.GetEC2Tag(i.Tags, "Name", "<missing name>"), aws.ToString(i.PrivateIpAddress))
 }
 
-func printDetails(i ec2types.Instance) string {
+func (i Instance) PrintDetails() string {
 	output := bytes.NewBufferString("")
 
 	fmt.Fprintf(output, "Name: %s\n", common.GetEC2Tag(i.Tags, "Name", "<missing name>"))
@@ -143,191 +119,119 @@ func printDetails(i ec2types.Instance) string {
 	return output.String()
 }
 
-func NewTui() *Tui {
-	t := Tui{
-		app: tview.NewApplication(),
-		resourceDetails: tview.NewTextView().
-			SetDynamicColors(true).
-			SetRegions(true),
-		resourceList: tview.NewList().
-			ShowSecondaryText(false).
-			SetSelectedBackgroundColor(tcell.ColorDarkSlateGray).
-			SetSelectedTextColor(tcell.ColorWhite).
-			SetMainTextColor(tcell.ColorDarkGray),
-		input: tview.NewInputField().
-			SetLabel(">: "),
-		flex: tview.NewFlex(),
-		fzf:  fzfwrapper.NewWrapper(fzfwrapper.WithSortBy(fzfwrapper.ByScore, fzfwrapper.ByPosition, fzfwrapper.ByLength)),
-	}
-
-	t.app.EnableMouse(true)
-	t.resourceDetails.SetBorder(true)
-	t.resourceList.SetBorder(true)
-
-	t.resourceList.SetChangedFunc(func(id int, text string, secondary string, shortcut rune) {
-		t.resourceDetails.SetText(
-			fmt.Sprintf("%s\n", secondary),
-		)
-	})
-
-	t.input.SetChangedFunc(func(text string) {
-		idx := make([]int, 0)
-		if text == "" {
-			t.resourceList.Clear()
-			for k, v := range t.instances {
-				idx = append([]int{k}, idx...) // reverse order since we are adding items to the beggining of the list
-				t.resourceList.InsertItem(
-					-t.resourceList.GetItemCount()-1,
-					fmt.Sprintf("%s (%s)", common.GetEC2Tag(v.Tags, "Name", "<missing name>"), aws.ToString(v.PrivateIpAddress)),
-					fmt.Sprintf("%s", printDetails(v)),
-					0, nil,
-				)
-			}
-			t.instanceIdx = idx
-			return
-		}
-
-		t.fzf.SetPattern(text)
-		results, _ := t.fzf.Fuzzy()
-
-		t.resourceList.Clear()
-		t.resourceDetails.Clear()
-
-		for _, v := range results {
-			idx = append([]int{int(v.Item.Index())}, idx...) // reverse order since we are adding items to the beggining of the list
-			i := t.instances[v.Item.Index()]
-			t.resourceList.InsertItem(
-				-t.resourceList.GetItemCount()-1,
-				tview.TranslateANSI(
-					fmt.Sprintf("%s (%s)", common.GetEC2Tag(i.Tags, "Name", "<missing name>"), aws.ToString(i.PrivateIpAddress)),
-				),
-				tview.TranslateANSI(v.HighlightResult()),
-				0, nil,
-			)
-		}
-		t.instanceIdx = idx
-		t.resourceList.SetCurrentItem(-1)
-		t.resourceList.SetOffset(0, 0)
-		boldItem(t.resourceList, t.resourceList.GetCurrentItem())
-	})
-
-	t.flex.SetDirection(tview.FlexRow).
-		// Horizontal view, textView
-		AddItem(tview.NewFlex().
-			// Vertical view, options | details
-			AddItem(t.resourceList, 0, 1, false).
-			AddItem(t.resourceDetails, 0, 1, false),
-			0, 1, false).
-		// Horizontal view, input field
-		AddItem(t.input, 1, 1, true)
-
-	t.setCaptureEvents()
-	return &t
+type Tui struct {
+	app             *tview.Application
+	flex            *tview.Flex
+	input           *tview.InputField
+	resourceList    *tview.List
+	resourceDetails *tview.TextView
+	fzf             *fzfwrapper.Wrapper
+	instances       []Instance
+	selected        *Instance
+	instanceIdx     []int
 }
 
-func (t *Tui) setCaptureEvents() {
-	// Capture key events to perform custom actions
-	// Configure TAB key to cycle between windows
-	// Configure Up/Down key in input screen to scroll the list
-	t.app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		k := event.Key()
-		where := t.app.GetFocus()
-		switch k {
-		case tcell.KeyEnter:
-			current := t.resourceList.GetCurrentItem() // current index selected from list
-			instanceIdx := t.instanceIdx[current]      // offset of instances list
-			t.selected = &t.instances[instanceIdx]
-			t.app.Stop()
-			return nil
-		case tcell.KeyTab:
-			switch where {
-			case t.resourceDetails:
-				// next window
-				t.app.SetFocus(t.input)
-				return nil
-			case t.resourceList:
-				// next window
-				t.app.SetFocus(t.resourceDetails)
-				return nil
-			case t.input:
-				// next window
-				t.app.SetFocus(t.resourceList)
-				return nil
-			}
-		case tcell.KeyBacktab:
-			switch where {
-			case t.resourceDetails:
-				// previous window
-				t.app.SetFocus(t.resourceList)
-				return nil
-			case t.resourceList:
-				// previous window
-				t.app.SetFocus(t.input)
-				return nil
-			case t.input:
-				// previous window
-				t.app.SetFocus(t.resourceDetails)
-				return nil
-			}
-		case tcell.KeyUp:
-			switch where {
-			case t.input, t.resourceList:
-				// list up
-				current := t.resourceList.GetCurrentItem()
-				previous := current - 1
-				if previous < 0 {
-					previous = t.resourceList.GetItemCount() - 1
-				}
-				removeLineColor(t.resourceList, current)
-				boldItem(t.resourceList, previous)
-				t.resourceList.SetCurrentItem(previous)
-				return nil
-			}
-		case tcell.KeyDown:
-			switch where {
-			case t.input, t.resourceList:
-				// list down
-				current := t.resourceList.GetCurrentItem()
-				next := (current + 1) % t.resourceList.GetItemCount()
-				removeLineColor(t.resourceList, current)
-				boldItem(t.resourceList, next)
-				t.resourceList.SetCurrentItem(next)
-				return nil
-			}
-		}
-		return event
-	})
+type FzfData struct {
+	Instances []Instance
 }
 
-func tui(instancesOutput *ec2.DescribeInstancesOutput) (*ec2types.Instance, error) {
+func NewFzfData(instancesOutput *ec2.DescribeInstancesOutput) *FzfData {
+	f := FzfData{}
 
-	t := NewTui()
-
-	inputData := make([]string, 0)
-	instances := make([]ec2types.Instance, 0)
-	idx := make([]int, 0)
+	f.Instances = make([]Instance, 0)
 
 	for _, r := range instancesOutput.Reservations {
 		for _, i := range r.Instances {
-			inputData = append(inputData, printDetails(i))
-			instances = append(instances, i)
+			tmp := Instance{}
+			tmp.Instance = i // force ec2type.Instance to be my Instance type, see embedded struct doc
+			f.Instances = append(f.Instances, tmp)
 		}
 	}
 
-	t.fzf.SetInput(inputData)
-	t.instances = instances
+	return &f
+}
 
-	for k, v := range instances {
-		idx = append([]int{k}, idx...) // reverse order since we are adding items to the beggining of the list
+func (f FzfData) FzfInputList() []string {
+	out := make([]string, 0, f.FzfInputLen())
+
+	for _, i := range f.Instances {
+		out = append(out, i.PrintDetails())
+	}
+
+	return out
+}
+
+func (f FzfData) FzfInputLen() int {
+	return len(f.Instances)
+}
+
+func (t *Tui) resourceListFunc(id int, text string, secondary string, shortcut rune) {
+	t.resourceDetails.SetText(
+		fmt.Sprintf("%s\n", secondary),
+	)
+}
+
+func (t *Tui) inputFunc(text string) {
+	if text == "" {
+		t.resourceList.Clear()
+		last := len(t.instances) - 1
+		for k, v := range t.instances {
+			t.instanceIdx[last-k] = k
+			t.resourceList.InsertItem(
+				-t.resourceList.GetItemCount()-1,
+				v.PrintName(),
+				v.PrintDetails(),
+				0, nil,
+			)
+		}
+		return
+	}
+
+	t.fzf.SetPattern(text)
+	results, _ := t.fzf.Fuzzy()
+
+	t.resourceList.Clear()
+	t.resourceDetails.Clear()
+
+	last := len(results) - 1
+	for k, v := range results {
+		t.instanceIdx[last-k] = int(v.Item.Index())
+		i := t.instances[v.Item.Index()]
 		t.resourceList.InsertItem(
 			-t.resourceList.GetItemCount()-1,
-			fmt.Sprintf("%s (%s)", common.GetEC2Tag(v.Tags, "Name", "<missing name>"), aws.ToString(v.PrivateIpAddress)),
-			fmt.Sprintf("%s", printDetails(v)),
+			tview.TranslateANSI(
+				i.PrintName(),
+			),
+			tview.TranslateANSI(v.HighlightResult()),
 			0, nil,
 		)
 	}
 
-	t.instanceIdx = idx
+	t.resourceList.SetCurrentItem(-1)
+	t.resourceList.SetOffset(0, 0)
+	boldItem(t.resourceList, t.resourceList.GetCurrentItem())
+}
+
+func tui(instancesOutput *ec2.DescribeInstancesOutput) (*Instance, error) {
+
+	t := NewTui()
+
+	fzfInput := NewFzfData(instancesOutput)
+	t.fzf.SetInput(fzfInput)
+	t.instances = fzfInput.Instances
+	t.instanceIdx = make([]int, len(t.instances))
+
+	last := len(t.instances) - 1
+
+	for k, v := range t.instances {
+		t.instanceIdx[last-k] = k // reverse order since we are adding items to the beggining of the list
+		t.resourceList.InsertItem(
+			-t.resourceList.GetItemCount()-1,
+			v.PrintName(),
+			v.PrintDetails(),
+			0, nil,
+		)
+	}
 
 	if err := t.app.SetRoot(t.flex, true).SetFocus(t.flex).Run(); err != nil {
 		panic(err)
