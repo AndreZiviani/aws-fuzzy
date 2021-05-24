@@ -1,6 +1,6 @@
 # aws-fuzzy
 [![Coverage Status](https://coveralls.io/repos/github/AndreZiviani/aws-fuzzy/badge.svg?branch=master)](https://coveralls.io/github/AndreZiviani/aws-fuzzy?branch=master)
-[![CircleCI](https://circleci.com/gh/AndreZiviani/aws-fuzzy/tree/master.svg?style=shield)](https://circleci.com/gh/AndreZiviani/aws-fuzzy/tree/master)
+[![Actions](https://github.com/AndreZiviani/aws-fuzzy/actions/workflows/release.yml/badge.svg)](https://github.com/AndreZiviani/aws-fuzzy/actions)
 
 **aws-fuzzy was previously developed in Python, old code is available [here](https://github.com/AndreZiviani/aws-fuzzy/tree/legacy-python)**
 
