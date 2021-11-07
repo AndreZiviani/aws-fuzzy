@@ -268,7 +268,7 @@ func GetCredentials(ctx context.Context, profile string, ask bool) (*aws.Credent
 
 	creds, err = provider.Retrieve(ctx)
 	if err != nil {
-		fmt.Printf("failed to get role credentials, %s\n", err)
+		fmt.Fprintf(os.stderr, "failed to get role credentials, %s\n", err)
 		SsoLogin(ctx)
 		// if we get here we have an expired sso token and user realy wants to login, dont need to ask again
 		return GetCredentials(ctx, profile, false)
