@@ -8,7 +8,9 @@ import (
 	flags "github.com/jessevdk/go-flags"
 )
 
-var Parser = flags.NewParser(nil, flags.Default)
+var (
+	Parser = flags.NewParser(nil, flags.Default)
+)
 
 func Run() {
 	sso.Init(Parser)

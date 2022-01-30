@@ -4,7 +4,24 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	nmtypes "github.com/aws/aws-sdk-go-v2/service/networkmanager/types"
+	"os"
 )
+
+var (
+	UserHomeDir, _ = os.UserHomeDir()
+)
+
+// exists returns whether the given file or directory exists
+func exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
+}
 
 func GetNMTag(tags []nmtypes.Tag, key string, missing string) string {
 	// Get tag Name
