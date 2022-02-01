@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/AndreZiviani/aws-fuzzy/internal/cache"
+	"github.com/AndreZiviani/aws-fuzzy/internal/common"
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
@@ -57,7 +58,7 @@ func checkExpired(kind string, path string) (interface{}, error) {
 }
 
 func checkCachedDevice(cfg aws.Config) (SsoDeviceCredentials, error) {
-	creds, err := checkExpired("device", fmt.Sprintf("%s/.aws/sso/cache/botocore-client-id-%s.json", os.Getenv("HOME"), cfg.Region))
+	creds, err := checkExpired("device", fmt.Sprintf("%s/.aws/sso/cache/botocore-client-id-%s.json", common.UserHomeDir, cfg.Region))
 
 	if creds == nil {
 		return SsoDeviceCredentials{}, err
@@ -78,7 +79,7 @@ func getSessionFileName(startUrl *string) string {
 func checkCachedSession(cfg aws.Config, startUrl *string) (SsoSessionCredentials, error) {
 	hash := getSessionFileName(startUrl)
 
-	creds, err := checkExpired("session", fmt.Sprintf("%s/.aws/sso/cache/%x.json", os.Getenv("HOME"), hash))
+	creds, err := checkExpired("session", fmt.Sprintf("%s/.aws/sso/cache/%x.json", common.UserHomeDir, hash))
 
 	if creds == nil {
 		return SsoSessionCredentials{}, err
@@ -88,13 +89,21 @@ func checkCachedSession(cfg aws.Config, startUrl *string) (SsoSessionCredentials
 }
 
 func cacheCredentials(device *SsoDeviceCredentials, session *SsoSessionCredentials) error {
+	ssoCacheDir := fmt.Sprintf("%s/.aws/sso/cache/", common.UserHomeDir)
+	if ok, err := exists(ssoCacheDir); !ok {
+		err = os.MkdirAll(ssoCacheDir, 0700)
+		if err != nil {
+			return err
+		}
+	}
+
 	hash := getSessionFileName(session.StartUrl)
 
 	file, _ := json.Marshal(session)
-	_ = ioutil.WriteFile(fmt.Sprintf("%s/.aws/sso/cache/%x.json", os.Getenv("HOME"), hash), file, 0600)
+	_ = ioutil.WriteFile(fmt.Sprintf("%s/.aws/sso/cache/%x.json", common.UserHomeDir, hash), file, 0600)
 
 	file, _ = json.Marshal(device)
-	_ = ioutil.WriteFile(fmt.Sprintf("%s/.aws/sso/cache/botocore-client-id-%s.json", os.Getenv("HOME"), session.Region), file, 0600)
+	_ = ioutil.WriteFile(fmt.Sprintf("%s/.aws/sso/cache/botocore-client-id-%s.json", common.UserHomeDir, session.Region), file, 0600)
 	return nil
 
 }
@@ -268,7 +277,7 @@ func GetCredentials(ctx context.Context, profile string, ask bool) (*aws.Credent
 
 	creds, err = provider.Retrieve(ctx)
 	if err != nil {
-		fmt.Fprintf(os.stderr, "failed to get role credentials, %s\n", err)
+		fmt.Fprintf(os.Stderr, "failed to get role credentials, %s\n", err)
 		SsoLogin(ctx)
 		// if we get here we have an expired sso token and user realy wants to login, dont need to ask again
 		return GetCredentials(ctx, profile, false)
@@ -311,6 +320,10 @@ func (p *LoginCommand) Execute(args []string) error {
 	defer spanSso.Finish()
 
 	creds, err := GetCredentials(ctx, p.Profile, p.Ask)
+	if err != nil {
+		return err
+	}
+
 	PrintCredentials(creds)
 
 	return err

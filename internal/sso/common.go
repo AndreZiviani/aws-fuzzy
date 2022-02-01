@@ -5,20 +5,23 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"gopkg.in/ini.v1"
 	"io"
 	"os"
 	"os/exec"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/AndreZiviani/aws-fuzzy/internal/common"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"gopkg.in/ini.v1"
 )
 
 var (
-	configPath = fmt.Sprintf("%s/.aws/config", os.Getenv("HOME"))
+	configDir  = fmt.Sprintf("%s/.aws", common.UserHomeDir)
+	configPath = fmt.Sprintf("%s/config", configDir)
 )
 
 type AwsProfile struct {
@@ -70,6 +73,18 @@ func (ct *rfc3339) UnmarshalJSON(b []byte) (err error) {
 
 func (ct *rfc3339) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ct.Time)
+}
+
+// exists returns whether the given file or directory exists
+func exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }
 
 func CopyFile(src, dst string) error {
@@ -142,6 +157,11 @@ func WriteSsoProfiles(profiles map[string]AwsProfile) error {
 			fmt.Printf("could not backup config, %v\n", err)
 			return err
 		}
+	} else {
+		err = os.Mkdir(configDir, 0700)
+		if err != nil {
+			return err
+		}
 	}
 
 	c := ini.Empty()
@@ -169,7 +189,11 @@ func WriteSsoProfiles(profiles map[string]AwsProfile) error {
 }
 func LoadSsoProfiles() (map[string]AwsProfile, error) {
 	// Load aws config
-	cfg, _ := ini.Load(configPath)
+	cfg, err := ini.Load(configPath)
+
+	if err != nil {
+		return nil, err
+	}
 
 	cfg.DeleteSection("DEFAULT")
 

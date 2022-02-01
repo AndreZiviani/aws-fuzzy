@@ -4,7 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
+	"time"
+
 	"github.com/AndreZiviani/aws-fuzzy/internal/cache"
+	"github.com/AndreZiviani/aws-fuzzy/internal/common"
 	"github.com/AndreZiviani/aws-fuzzy/internal/sso"
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -12,9 +17,6 @@ import (
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
-	"os"
-	"os/exec"
-	"time"
 )
 
 func DoSsh(user, key, ip string) {
@@ -101,10 +103,13 @@ func (p *SshCommand) Execute(args []string) error {
 
 	// Expand ~ if present
 	if p.Key[0] == '~' {
-		p.Key = fmt.Sprintf("%s/%s", os.Getenv("HOME"), p.Key[2:])
+		p.Key = fmt.Sprintf("%s/%s", common.UserHomeDir, p.Key[2:])
 	}
 
 	instances, err := GetInstances(ctx, p.Profile)
+	if err != nil {
+		return err
+	}
 
 	span.Finish()
 

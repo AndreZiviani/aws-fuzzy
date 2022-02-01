@@ -18,7 +18,7 @@ func ConfigureProfiles(ctx context.Context) error {
 
 	reader := bufio.NewReader(os.Stdin)
 
-	//configPath := fmt.Sprintf("%s/.aws/config", os.Getenv("HOME"))
+	//configPath := fmt.Sprintf("%s/.aws/config", common.UserHomeDir)
 
 	fmt.Print("Enter SSO start url: ")
 	startUrl, _ := reader.ReadString('\n')
