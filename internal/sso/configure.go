@@ -38,7 +38,7 @@ func ConfigureProfiles(ctx context.Context) error {
 	}
 
 	// Authenticate
-	ssocreds, err := SsoLogin(ctx)
+	ssocreds, err := SsoLogin(ctx, false)
 	if err != nil {
 		return err
 	}

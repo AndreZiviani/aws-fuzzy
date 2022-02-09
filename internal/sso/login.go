@@ -7,6 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/AndreZiviani/aws-fuzzy/internal/cache"
 	"github.com/AndreZiviani/aws-fuzzy/internal/common"
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
@@ -17,9 +22,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
 	opentracing "github.com/opentracing/opentracing-go"
-	"io/ioutil"
-	"os"
-	"time"
 )
 
 func checkExpired(kind string, path string) (interface{}, error) {
@@ -108,14 +110,17 @@ func cacheCredentials(device *SsoDeviceCredentials, session *SsoSessionCredentia
 
 }
 
-func NewSsoCredentials(ctx context.Context, cfg aws.Config, oidc *ssooidc.Client, startUrl *string) (*SsoSessionCredentials, error) {
+func NewSsoCredentials(ctx context.Context, cfg aws.Config, oidc *ssooidc.Client, startUrl *string, force bool) (*SsoSessionCredentials, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ssocreds")
 	defer span.Finish()
 
-	sessionCredential, err := checkCachedSession(cfg, startUrl)
+	var sessionCredential SsoSessionCredentials
+	if force == false {
+		sessionCredential, err := checkCachedSession(cfg, startUrl)
 
-	if err == nil {
-		return &sessionCredential, nil
+		if err == nil {
+			return &sessionCredential, nil
+		}
 	}
 
 	// we do not have valid credential, authenticating again
@@ -193,7 +198,7 @@ func NewSsoCredentials(ctx context.Context, cfg aws.Config, oidc *ssooidc.Client
 
 }
 
-func SsoLogin(ctx context.Context) (*SsoSessionCredentials, error) {
+func SsoLogin(ctx context.Context, force bool) (*SsoSessionCredentials, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ssologin")
 	defer span.Finish()
 
@@ -233,7 +238,7 @@ func SsoLogin(ctx context.Context) (*SsoSessionCredentials, error) {
 
 	oidc := ssooidc.NewFromConfig(cfg)
 
-	return NewSsoCredentials(ctx, cfg, oidc, startUrl)
+	return NewSsoCredentials(ctx, cfg, oidc, startUrl, force)
 }
 
 func GetCredentials(ctx context.Context, profile string, ask bool) (*aws.Credentials, error) {
@@ -278,7 +283,14 @@ func GetCredentials(ctx context.Context, profile string, ask bool) (*aws.Credent
 	creds, err = provider.Retrieve(ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to get role credentials, %s\n", err)
-		SsoLogin(ctx)
+
+		if strings.Contains(err.Error(), "UnauthorizedException: Session token not found or invalid") {
+			// AWS invalidated our session token even though its not expired yet... refreshing
+			SsoLogin(ctx, true)
+		} else {
+			SsoLogin(ctx, false)
+		}
+
 		// if we get here we have an expired sso token and user realy wants to login, dont need to ask again
 		return GetCredentials(ctx, profile, false)
 	}
