@@ -26,9 +26,6 @@ builds:
       - goos: windows
         goarch: arm64
     main: ./cmd/aws-fuzzy/main.go
-    hooks:
-      post:
-        - upx "{{ .Path }}"
 archives:
   - format: binary
 checksum:
