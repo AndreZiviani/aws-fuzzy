@@ -45,6 +45,8 @@ func Print(pager bool, slices []string) error {
 func Config(ctx context.Context, p *ConfigCommand, subservice string) ([]string, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "config")
 
+	cacheKey := fmt.Sprintf("%s-aggregators", p.Profile)
+
 	creds, err := sso.GetCredentials(ctx, p.Profile, false)
 	if err != nil {
 		return nil, err
@@ -59,7 +61,7 @@ func Config(ctx context.Context, p *ConfigCommand, subservice string) ([]string,
 
 	// Check if we have a cached result of available aggregators
 	c, _ := cache.New("config")
-	j, err := c.Fetch(p.Profile)
+	j, err := c.Fetch(cacheKey)
 
 	aggregators := []configtypes.ConfigurationAggregator{}
 	if err == nil {
@@ -83,7 +85,7 @@ func Config(ctx context.Context, p *ConfigCommand, subservice string) ([]string,
 		}
 
 		tmpj, _ := json.Marshal(aggregators)
-		c.Save(p.Profile, string(tmpj), time.Duration(10)*time.Minute)
+		c.Save(cacheKey, string(tmpj), time.Duration(10)*time.Minute)
 
 		spanGetAggregators.Finish()
 	}
