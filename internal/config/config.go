@@ -67,6 +67,10 @@ func Config(ctx context.Context, p *ConfigCommand, subservice string) ([]string,
 	if err == nil {
 		// We have valid cached credentials
 		_ = json.Unmarshal([]byte(j), &aggregators)
+		if len(aggregators) == 0 {
+			c.Delete(cacheKey)
+			return nil, errors.New("could not find any aggregators")
+		}
 	} else {
 		// Searching for available aggregators
 		spanGetAggregators, tmpctx := opentracing.StartSpanFromContext(ctx, "configgetaggregators")
