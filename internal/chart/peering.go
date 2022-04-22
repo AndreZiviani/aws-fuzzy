@@ -44,7 +44,7 @@ type PeeringConnection struct {
 	AccepterVpc  string
 }
 
-func (p *PeeringCommand) Execute(args []string) error {
+func (p *Peering) Execute(args []string) error {
 	ctx := context.Background()
 
 	closer, err := tracing.InitTracing()

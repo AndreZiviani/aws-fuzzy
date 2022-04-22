@@ -1,4 +1,4 @@
-package granted
+package sso
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
-func (p *BrowserCommand) Execute(args []string) error {
+func (p *Browser) Execute(args []string) error {
 
 	ctx := context.Background()
 

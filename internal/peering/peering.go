@@ -12,7 +12,7 @@ func Peering(ctx context.Context, profile string, account string) ([]string, err
 	span, ctx := opentracing.StartSpanFromContext(ctx, "peering")
 	defer span.Finish()
 
-	query := config.ConfigCommand{
+	query := config.Config{
 		Profile: profile,
 		Account: account,
 		Pager:   false,
@@ -27,7 +27,7 @@ func Peering(ctx context.Context, profile string, account string) ([]string, err
 		Limit:  0,
 	}
 
-	result, err := config.Config(ctx, &query, "VPCPeeringConnection%")
+	result, err := config.QueryConfig(ctx, &query, "VPCPeeringConnection%")
 
 	return result, err
 }

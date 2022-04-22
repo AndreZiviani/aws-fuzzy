@@ -28,11 +28,12 @@ type DescribeTransitGatewayRouteTablesOutput struct {
 	Routes []ec2types.TransitGatewayRoute
 }
 
-func NewEC2Client(ctx context.Context, profile *string, region *string) (*ec2.Client, error) {
+func NewEC2Client(ctx context.Context, profile string, region *string) (*ec2.Client, error) {
 	spanNewEC2Client, ctx := opentracing.StartSpanFromContext(ctx, "newec2client")
 	defer spanNewEC2Client.Finish()
 
-	creds, err := sso.GetCredentials(ctx, *profile, false)
+	login := sso.Login{Profile: profile}
+	creds, err := login.GetCredentials(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -45,20 +46,20 @@ func NewEC2Client(ctx context.Context, profile *string, region *string) (*ec2.Cl
 	return ec2.NewFromConfig(cfg), nil
 }
 
-func GetEC2Client(ctx context.Context, clients map[string]map[string]*ec2.Client, profile *string, region *string) (*ec2.Client, error) {
+func GetEC2Client(ctx context.Context, clients map[string]map[string]*ec2.Client, profile string, region *string) (*ec2.Client, error) {
 	// check if we already have a client
-	if _, ok := clients[*profile]; ok {
-		if client, ok := clients[*profile][*region]; ok {
+	if _, ok := clients[profile]; ok {
+		if client, ok := clients[profile][*region]; ok {
 			return client, nil
 		}
 	} else {
 		// we have nothing
-		clients[*profile] = map[string]*ec2.Client{}
+		clients[profile] = map[string]*ec2.Client{}
 	}
 
 	// creating a client on the specified region
 	client, _ := NewEC2Client(ctx, profile, region)
-	clients[*profile][*region] = client
+	clients[profile][*region] = client
 
 	return client, nil
 }
@@ -140,18 +141,20 @@ func DescribeTransitGatewayRegistrationsFromARN(ctx context.Context, transitGate
 
 	output := make([]*DescribeTGRegistrationsOutput, len(transitGatewaysARN))
 
+	login := sso.Login{}
+
 	for i, tg := range transitGatewaysARN {
 
 		arn, _ := arn.Parse(aws.ToString(tg))
 
-		profile, _, err := sso.GetAccount(arn.AccountID)
+		profile, err := login.GetProfileFromID(arn.AccountID)
 		if err != nil {
 			fmt.Printf("failed to get account, %s\n", err)
 			return nil, err
 		}
 
 		// get a ec2 client instance on this region using the specified profile
-		client, err := GetEC2Client(ctx, clients, profile, &arn.Region)
+		client, err := GetEC2Client(ctx, clients, profile.Name, &arn.Region)
 		if err != nil {
 			fmt.Printf("failed to create ec2 client, %s\n", err)
 			return nil, err

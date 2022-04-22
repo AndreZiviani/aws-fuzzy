@@ -42,12 +42,13 @@ func Print(pager bool, slices []string) error {
 	return nil
 }
 
-func Config(ctx context.Context, p *ConfigCommand, subservice string) ([]string, error) {
+func QueryConfig(ctx context.Context, p *Config, subservice string) ([]string, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "config")
 
 	cacheKey := fmt.Sprintf("%s-aggregators", p.Profile)
 
-	creds, err := sso.GetCredentials(ctx, p.Profile, false)
+	login := sso.Login{Profile: p.Profile}
+	creds, err := login.GetCredentials(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -97,12 +98,12 @@ func Config(ctx context.Context, p *ConfigCommand, subservice string) ([]string,
 	// Filter results to an account, if specified by the user
 	accountFilter := ""
 	if p.Account != "" {
-		_, account, err := sso.GetAccount(p.Account)
+		account, err := login.GetProfile(p.Account)
 		if account == nil {
 			fmt.Printf("failed to get account %s, %s\n", p.Account, err)
 			return nil, err
 		}
-		accountFilter = fmt.Sprintf(" AND accountId like '%s'", account.AccountId)
+		accountFilter = fmt.Sprintf(" AND accountId like '%s'", account.AWSConfig.SSOAccountID)
 	}
 
 	spanQuery, tmpctx := opentracing.StartSpanFromContext(ctx, "configquery")
@@ -130,7 +131,7 @@ func Config(ctx context.Context, p *ConfigCommand, subservice string) ([]string,
 
 }
 
-func wrapper(p *ConfigCommand, args []string, subservice string) error {
+func wrapper(p *Config, args []string, subservice string) error {
 	ctx := context.Background()
 
 	closer, err := tracing.InitTracing()
@@ -143,13 +144,13 @@ func wrapper(p *ConfigCommand, args []string, subservice string) error {
 	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "config")
 	defer span.Finish()
 
-	results, _ := Config(ctx, p, subservice)
+	results, _ := QueryConfig(ctx, p, subservice)
 	return Print(p.Pager, results)
 
 }
 
-func (p *Ec2ConfigCommand) Execute(args []string) error {
-	tmp := ConfigCommand{
+func (p *Ec2Config) Execute(args []string) error {
+	tmp := Config{
 		Profile: p.Profile,
 		Pager:   p.Pager,
 		Account: p.Account,
@@ -162,6 +163,6 @@ func (p *Ec2ConfigCommand) Execute(args []string) error {
 
 }
 
-func (p *ConfigCommand) Execute(args []string) error {
+func (p *Config) Execute(args []string) error {
 	return wrapper(p, args, "%")
 }

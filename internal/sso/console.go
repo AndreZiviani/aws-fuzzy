@@ -1,4 +1,4 @@
-package granted
+package sso
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
-func (p *ConsoleCommand) Execute(args []string) error {
+func (p *Console) Execute(args []string) error {
 
 	ctx := context.Background()
 
@@ -26,7 +26,6 @@ func (p *ConsoleCommand) Execute(args []string) error {
 	spanSso, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssoconsolecmd")
 	defer spanSso.Finish()
 
-	login := LoginCommand{Profile: p.Profile, Ask: false}
 	creds, err := login.GetCredentials(ctx)
 	if err != nil {
 		return err
@@ -37,7 +36,7 @@ func (p *ConsoleCommand) Execute(args []string) error {
 	return err
 }
 
-func (p *ConsoleCommand) OpenBrowser(ctx context.Context, credentials *aws.Credentials) error {
+func (p *Console) OpenBrowser(ctx context.Context, credentials *aws.Credentials) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ssorolecreds")
 	defer span.Finish()
 

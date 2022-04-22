@@ -16,7 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/config"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	nm "github.com/aws/aws-sdk-go-v2/service/networkmanager"
+	"github.com/aws/aws-sdk-go-v2/service/networkmanager"
 	opentracing "github.com/opentracing/opentracing-go"
 
 	//"github.com/opentracing/opentracing-go/log"
@@ -27,6 +27,8 @@ import (
 func mapRegistrations(tgs []*vpc.DescribeTGRegistrationsOutput) *opts.TreeData {
 	transitgatewaynodes := make([]*opts.TreeData, 0)
 	regions := make(map[string][]*opts.TreeData)
+
+	login := sso.Login{}
 
 	for _, tg := range tgs {
 		tgwchildren := make([]*opts.TreeData, 0)
@@ -39,14 +41,15 @@ func mapRegistrations(tgs []*vpc.DescribeTGRegistrationsOutput) *opts.TreeData {
 
 		// Create Tree nodes
 		for _, attachment := range tg.Attachments {
-			account, _, err := sso.GetAccount(aws.ToString(attachment.ResourceOwnerId))
+			profile, err := login.GetProfileFromID(aws.ToString(attachment.ResourceOwnerId))
+			account := profile.Name
 			if err != nil {
-				account = attachment.ResourceOwnerId
+				account = *attachment.ResourceOwnerId
 			}
 
 			name := fmt.Sprintf("%s\n%s\n%s",
 				common.GetEC2Tag(attachment.Tags, "Name", aws.ToString(attachment.TransitGatewayAttachmentId)),
-				aws.ToString(account),
+				account,
 				aws.ToString(attachment.ResourceId),
 			)
 
@@ -157,11 +160,13 @@ func mapRegistrations(tgs []*vpc.DescribeTGRegistrationsOutput) *opts.TreeData {
 	}
 }
 
-func NetworkManager(ctx context.Context, p *NMCommand) ([]opts.TreeData, error) {
+func NetworkManager(ctx context.Context, p *NM) ([]opts.TreeData, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "networkmanager")
 	defer span.Finish()
 
-	creds, err := sso.GetCredentials(ctx, p.Profile, false)
+	login := sso.Login{Profile: p.Profile}
+
+	creds, err := login.GetCredentials(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +176,7 @@ func NetworkManager(ctx context.Context, p *NMCommand) ([]opts.TreeData, error) 
 		return nil, err
 	}
 
-	nmclient := nm.NewFromConfig(cfg)
+	nmclient := networkmanager.NewFromConfig(cfg)
 
 	globalnetworks, err := vpc.GetGlobalNetworks(ctx, nmclient)
 	if err != nil {
@@ -243,7 +248,7 @@ func NetworkManager(ctx context.Context, p *NMCommand) ([]opts.TreeData, error) 
 
 }
 
-func (p *NMCommand) Execute(args []string) error {
+func (p *NM) Execute(args []string) error {
 
 	ctx := context.Background()
 

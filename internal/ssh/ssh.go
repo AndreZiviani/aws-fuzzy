@@ -42,7 +42,9 @@ func GetInstances(ctx context.Context, profile string) (*ec2.DescribeInstancesOu
 		return instances, nil
 	}
 
-	creds, err := sso.GetCredentials(ctx, profile, false)
+	login := sso.Login{Profile: profile}
+
+	creds, err := login.GetCredentials(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +85,7 @@ func GetInstances(ctx context.Context, profile string) (*ec2.DescribeInstancesOu
 
 }
 
-func (p *SshCommand) Execute(args []string) error {
+func (p *Ssh) Execute(args []string) error {
 
 	ctx := context.Background()
 
