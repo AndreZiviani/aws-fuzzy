@@ -19,20 +19,20 @@ import (
 	"github.com/opentracing/opentracing-go/log"
 )
 
-func DoSsh(user, key, ip string) {
-	cmd := exec.Command("ssh", "-l", user, "-i", key, ip)
+func (p *Ssh) DoSsh(ip string) {
+	cmd := exec.Command("ssh", "-l", p.User, "-i", p.Key, ip)
 	cmd.Stdout = os.Stdout
 	cmd.Stdin = os.Stdin
 	cmd.Stderr = os.Stderr
 	cmd.Run()
 }
 
-func GetInstances(ctx context.Context, profile string) (*ec2.DescribeInstancesOutput, error) {
+func (p *Ssh) GetInstances(ctx context.Context) (*ec2.DescribeInstancesOutput, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "sshgetinstances")
 	defer span.Finish()
 
 	c, _ := cache.New("ssh")
-	j, err := c.Fetch(profile)
+	j, err := c.Fetch(p.Profile)
 
 	instances := &ec2.DescribeInstancesOutput{}
 	if err == nil {
@@ -42,7 +42,7 @@ func GetInstances(ctx context.Context, profile string) (*ec2.DescribeInstancesOu
 		return instances, nil
 	}
 
-	login := sso.Login{Profile: profile}
+	login := sso.Login{Profile: p.Profile}
 
 	creds, err := login.GetCredentials(ctx)
 	if err != nil {
@@ -78,7 +78,7 @@ func GetInstances(ctx context.Context, profile string) (*ec2.DescribeInstancesOu
 		log.String("event", "describe instances"),
 	)
 	tmp, _ := json.Marshal(instances)
-	c.Save(profile, string(tmp), time.Duration(10)*time.Minute)
+	c.Save(p.Profile, string(tmp), time.Duration(10)*time.Minute)
 	spanDescribeInstances.Finish()
 
 	return instances, nil
@@ -108,7 +108,7 @@ func (p *Ssh) Execute(args []string) error {
 		p.Key = fmt.Sprintf("%s/%s", common.UserHomeDir, p.Key[2:])
 	}
 
-	instances, err := GetInstances(ctx, p.Profile)
+	instances, err := p.GetInstances(ctx)
 	if err != nil {
 		return err
 	}
@@ -120,7 +120,7 @@ func (p *Ssh) Execute(args []string) error {
 		return err
 	}
 
-	DoSsh(p.User, p.Key, aws.ToString(instance.PrivateIpAddress))
+	p.DoSsh(aws.ToString(instance.PrivateIpAddress))
 	return nil
 
 }

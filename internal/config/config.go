@@ -22,7 +22,7 @@ import (
 )
 
 // Pretty print json output
-func Print(pager bool, slices []string) error {
+func (p *Config) Print(slices []string) error {
 
 	var prettyJSON bytes.Buffer
 
@@ -30,7 +30,7 @@ func Print(pager bool, slices []string) error {
 	tmp = fmt.Sprintf("[%s]", tmp)
 	_ = json.Indent(&prettyJSON, []byte(tmp), "", "  ")
 
-	if pager {
+	if p.Pager {
 		// less
 		cmd := exec.Command("less")
 		cmd.Stdin = strings.NewReader(prettyJSON.String())
@@ -42,7 +42,7 @@ func Print(pager bool, slices []string) error {
 	return nil
 }
 
-func QueryConfig(ctx context.Context, p *Config, subservice string) ([]string, error) {
+func (p *Config) QueryConfig(ctx context.Context, subservice string) ([]string, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "config")
 
 	cacheKey := fmt.Sprintf("%s-aggregators", p.Profile)
@@ -131,7 +131,7 @@ func QueryConfig(ctx context.Context, p *Config, subservice string) ([]string, e
 
 }
 
-func wrapper(p *Config, args []string, subservice string) error {
+func (p *Config) wrapper(args []string, subservice string) error {
 	ctx := context.Background()
 
 	closer, err := tracing.InitTracing()
@@ -144,8 +144,12 @@ func wrapper(p *Config, args []string, subservice string) error {
 	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "config")
 	defer span.Finish()
 
-	results, _ := QueryConfig(ctx, p, subservice)
-	return Print(p.Pager, results)
+	results, err := p.QueryConfig(ctx, subservice)
+	if err != nil {
+		return err
+	}
+
+	return p.Print(results)
 
 }
 
@@ -159,10 +163,10 @@ func (p *Ec2Config) Execute(args []string) error {
 		Limit:   p.Limit,
 		Service: p.Service,
 	}
-	return wrapper(&tmp, args, p.Type)
+	return tmp.wrapper(args, p.Type)
 
 }
 
 func (p *Config) Execute(args []string) error {
-	return wrapper(p, args, "%")
+	return p.wrapper(args, "%")
 }

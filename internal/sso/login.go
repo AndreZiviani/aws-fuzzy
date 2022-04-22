@@ -15,7 +15,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
-func (p *Login) init() {
+func (p *Login) LoadProfiles() {
 	awsProfiles, _ := cfaws.GetProfilesFromDefaultSharedConfig(context.TODO())
 	p.profiles = awsProfiles
 }
@@ -52,7 +52,15 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 	var ok bool
 
 	if profile, ok = p.profiles[p.Profile]; !ok {
-		return nil, errors.New(fmt.Sprintf("profile %s not found!", p.Profile))
+		// mais p.profiles isnt initialized yet?
+		p.LoadProfiles()
+
+		// try again...
+		if profile, ok = p.profiles[p.Profile]; !ok {
+			return nil, errors.New(fmt.Sprintf("profile %s not found!", p.Profile))
+		}
+
+		// got it!
 	}
 
 	// if profile == nil {...

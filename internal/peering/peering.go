@@ -27,7 +27,7 @@ func Peering(ctx context.Context, profile string, account string) ([]string, err
 		Limit:  0,
 	}
 
-	result, err := config.QueryConfig(ctx, &query, "VPCPeeringConnection%")
+	result, err := query.QueryConfig(ctx, "VPCPeeringConnection%")
 
 	return result, err
 }
