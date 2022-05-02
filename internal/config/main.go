@@ -5,11 +5,11 @@ import (
 	flags "github.com/jessevdk/go-flags"
 )
 
-type Ec2ConfigCommand struct {
+type Ec2Config struct {
 	Type string `short:"t" long:"type" default:"Instance" description:"Filter by EC2 resource (case sensitive):\n CustomerGateway, EgressOnlyInternetGateway, EIP, FlowLog, Host, Instance, InternetGateway, NatGateway, NetworkAcl, NetworkInterface, RegisteredHAInstance, RouteTable, SecurityGroup, Subnet, Volume, VPCEndpoint, VPCEndpointService, VPCPeeringConnection, VPC, VPNConnection, VPNGateway"`
-	ConfigCommand
+	Config
 }
-type ConfigCommand struct {
+type Config struct {
 	Profile string `short:"p" long:"profile" env:"AWS_PROFILE" default:"default" description:"What profile to use"`
 	Pager   bool   `long:"pager" description:"Pipe output to less"`
 	Account string `short:"a" long:"account" description:"Filter Config resources to this account"`
@@ -18,12 +18,6 @@ type ConfigCommand struct {
 	Limit   int    `short:"l" long:"limit" default:"0" description:"Limit the number of results"`
 	Service string
 }
-
-/*
-var (
-	configCommand ConfigCommand
-)
-*/
 
 var AwsServices = map[string]string{
 	"acm":            "ACM",
@@ -75,22 +69,22 @@ func Init(parser *flags.Parser) {
 
 	for k, v := range AwsServices {
 		if k == "ec2" {
-			configCommand := Ec2ConfigCommand{}
-			configCommand.Service = v
+			config := Ec2Config{}
+			config.Service = v
 			cmd.AddCommand(
 				k,
 				fmt.Sprintf("Query %s resources in AWS Config inventory", v),
 				fmt.Sprintf("Query %s resources in AWS Config inventory", v),
-				&configCommand)
+				&config)
 			continue
 		}
-		configCommand := ConfigCommand{}
-		configCommand.Service = v
+		config := Config{}
+		config.Service = v
 		cmd.AddCommand(
 			k,
 			fmt.Sprintf("Query %s resources in AWS Config inventory", v),
 			fmt.Sprintf("Query %s resources in AWS Config inventory", v),
-			&configCommand)
+			&config)
 	}
 
 }

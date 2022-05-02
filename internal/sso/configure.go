@@ -4,85 +4,121 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/sso"
-	opentracing "github.com/opentracing/opentracing-go"
+	"io"
 	"os"
 	"strings"
+
+	"github.com/AndreZiviani/aws-fuzzy/internal/common"
+	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/sso"
+	"github.com/common-fate/granted/pkg/cfaws"
+	opentracing "github.com/opentracing/opentracing-go"
+	"gopkg.in/ini.v1"
 )
 
-func ConfigureProfiles(ctx context.Context) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "ssoprofiles")
-	defer span.Finish()
+type AwsProfile struct {
+	StartUrl  string `ini:"sso_start_url"`
+	Region    string `ini:"sso_region"`
+	AccountId string `ini:"sso_account_id"`
+	Role      string `ini:"sso_role_name"`
+}
 
-	reader := bufio.NewReader(os.Stdin)
-
-	//configPath := fmt.Sprintf("%s/.aws/config", common.UserHomeDir)
-
-	fmt.Print("Enter SSO start url: ")
-	startUrl, _ := reader.ReadString('\n')
-	startUrl = strings.Replace(startUrl, "\n", "", -1)
-
-	fmt.Print("Default region: ")
-	region, _ := reader.ReadString('\n')
-	region = strings.Replace(region, "\n", "", -1)
-
-	// Create a dummy default in order to be able to authenticate and list accounts
-	profiles := NewSsoProfiles()
-	profiles["default"] = AwsProfile{startUrl, region, "000000000000", "dummy"}
-
-	err := WriteSsoProfiles(profiles)
-	if err != nil {
-		return err
-	}
-
-	// Authenticate
-	ssocreds, err := SsoLogin(ctx, false)
-	if err != nil {
-		return err
-	}
-
-	cfg, err := NewAwsConfig(ctx, nil)
-	if err != nil {
-		return err
-	}
-
+func (p *Configure) GetAccountAccess(ctx context.Context, cfg aws.Config, credentials *cfaws.SSOToken, startURL string, region string) (map[string]AwsProfile, error) {
 	ssoclient := sso.NewFromConfig(cfg)
 
 	// List available account
 	accounts, err := ssoclient.ListAccounts(ctx,
 		&sso.ListAccountsInput{
-			AccessToken: ssocreds.AccessToken,
+			AccessToken: &credentials.AccessToken,
 			MaxResults:  aws.Int32(100),
 		},
 	)
 	if err != nil {
 		fmt.Printf("failed to list accounts, %s\n", err)
-		return err
+		return map[string]AwsProfile{}, err
 	}
 
+	profiles := NewSsoProfiles()
 	for _, account := range accounts.AccountList {
 		// List Available roles in each account
 		roles, err := ssoclient.ListAccountRoles(ctx,
 			&sso.ListAccountRolesInput{
-				AccessToken: ssocreds.AccessToken,
+				AccessToken: &credentials.AccessToken,
 				AccountId:   account.AccountId,
 				MaxResults:  aws.Int32(100),
 			},
 		)
 		if err != nil {
 			fmt.Printf("failed to list account roles, %s\n", err)
-			return err
+			return map[string]AwsProfile{}, err
 		}
 
-		// TODO: ask user which role to use if they have more than one role on this account
 		role := roles.RoleList[0].RoleName
+		reader := bufio.NewReader(os.Stdin)
+
+		if len(roles.RoleList) > 1 {
+			fmt.Printf("Found %d roles for account %s:\n", len(roles.RoleList), *account.AccountName)
+			for _, v := range roles.RoleList {
+				fmt.Println(v)
+			}
+
+			fmt.Printf("Which one do you want? (default: %s) ", roles.RoleList[0].RoleName)
+			text, _ := reader.ReadString('\n')
+
+			if len(text) != 0 {
+				*role = text
+			}
+
+			// TODO: check for typo in role name?
+		}
+
+		fmt.Printf("Profile name for account %s: (defaults to account name) ", *account.AccountName)
+		text, _ := reader.ReadString('\n')
+		text = strings.TrimSuffix(text, "\n")
 
 		tmp := strings.ReplaceAll(*account.AccountName, " ", "_")
+		if len(text) != 0 {
+			tmp = text
+		}
+
 		profile := fmt.Sprintf("profile %s", tmp)
-		profiles[profile] = AwsProfile{startUrl, region, *account.AccountId, *role}
+		profiles[profile] = AwsProfile{startURL, region, *account.AccountId, *role}
 	}
+
+	return profiles, err
+}
+
+func (p *Configure) ConfigureProfiles(ctx context.Context) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "ssoprofiles")
+	defer span.Finish()
+
+	reader := bufio.NewReader(os.Stdin)
+
+	fmt.Print("SSO start url: ")
+	startURL, _ := reader.ReadString('\n')
+	startURL = strings.Replace(startURL, "\n", "", -1)
+
+	fmt.Print("SSO region: ")
+	region, _ := reader.ReadString('\n')
+	region = strings.Replace(region, "\n", "", -1)
+
+	// Authenticate
+	cfg, err := NewAwsConfig(ctx, nil)
+	tmp := cfaws.CFSharedConfig{
+		Name:      "dummy",
+		AWSConfig: config.SharedConfig{SSOStartURL: startURL, Region: region, SSOAccountID: "000000000000", SSORoleName: "dummy"},
+	}
+
+	ssocreds, err := cfaws.SSODeviceCodeFlow(ctx, cfg, &tmp)
+	if err != nil {
+		return err
+	}
+
+	cfaws.StoreSSOToken(tmp.AWSConfig.SSOStartURL, *ssocreds)
+
+	profiles, err := p.GetAccountAccess(ctx, cfg, ssocreds, startURL, region)
 
 	// Save complete profile config
 	err = WriteSsoProfiles(profiles)
@@ -93,7 +129,73 @@ func ConfigureProfiles(ctx context.Context) error {
 	return nil
 }
 
-func (p *ConfigureCommand) Execute(args []string) error {
+func NewSsoProfiles() map[string]AwsProfile {
+	return make(map[string]AwsProfile)
+}
+
+func CopyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	if _, err = io.Copy(out, in); err != nil {
+		return err
+	}
+	err = out.Sync()
+	return err
+}
+
+func WriteSsoProfiles(profiles map[string]AwsProfile) error {
+	configDir := fmt.Sprintf("%s/.aws", common.UserHomeDir)
+	configPath := fmt.Sprintf("%s/config", configDir)
+
+	if _, err := os.Stat(configPath); err == nil {
+		// found existing config file, backup before proceeding
+		err := CopyFile(configPath, fmt.Sprintf("%s.bkp", configPath))
+		if err != nil {
+			fmt.Printf("could not backup config, %v\n", err)
+			return err
+		}
+	} else {
+		err = os.Mkdir(configDir, 0700)
+		if err != nil {
+			return err
+		}
+	}
+
+	c := ini.Empty()
+
+	for k, v := range profiles {
+		s, _ := c.NewSection(k)
+		_ = s.ReflectFrom(&v)
+	}
+
+	f, err := os.Create(configPath)
+
+	if err != nil {
+		fmt.Printf("failed to write SSO profiles, %s\n", err)
+		return err
+	}
+	defer f.Close()
+
+	_, err = c.WriteTo(f)
+	if err != nil {
+		fmt.Printf("failed to write SSO profiles, %s\n", err)
+		return err
+	}
+
+	return nil
+}
+
+func (p *Configure) Execute(args []string) error {
 	ctx := context.Background()
 
 	closer, err := tracing.InitTracing()
@@ -105,5 +207,5 @@ func (p *ConfigureCommand) Execute(args []string) error {
 	tracer := opentracing.GlobalTracer()
 	spanSso, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssoconfigure")
 	defer spanSso.Finish()
-	return ConfigureProfiles(ctx)
+	return p.ConfigureProfiles(ctx)
 }

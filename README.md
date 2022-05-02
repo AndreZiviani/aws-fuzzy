@@ -158,14 +158,17 @@ Configure and login to AWS SSO and export session credentials.
 
 ```sh
 Usage:
-  aws-fuzzy [OPTIONS] sso <configure | login>
+  aws-fuzzy [OPTIONS] sso <command>
 
-Utilities developed to ease operation and configuration of AWS SSO
+Utilities developed to ease operation and configuration of AWS SSO.
+This is mostly imported from common-fate/granted so some log messages may display 'granted' as the application name
 
 Help Options:
   -h, --help      Show this help message
 
 Available commands:
+  browser    Configure default browser
   configure  Configure AWS SSO
-  login      Login to AWS SSO
+  console    Open AWS Console
+  login      Login to AWS
 ```

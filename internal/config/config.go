@@ -22,7 +22,7 @@ import (
 )
 
 // Pretty print json output
-func Print(pager bool, slices []string) error {
+func (p *Config) Print(slices []string) error {
 
 	var prettyJSON bytes.Buffer
 
@@ -30,7 +30,7 @@ func Print(pager bool, slices []string) error {
 	tmp = fmt.Sprintf("[%s]", tmp)
 	_ = json.Indent(&prettyJSON, []byte(tmp), "", "  ")
 
-	if pager {
+	if p.Pager {
 		// less
 		cmd := exec.Command("less")
 		cmd.Stdin = strings.NewReader(prettyJSON.String())
@@ -42,12 +42,13 @@ func Print(pager bool, slices []string) error {
 	return nil
 }
 
-func Config(ctx context.Context, p *ConfigCommand, subservice string) ([]string, error) {
+func (p *Config) QueryConfig(ctx context.Context, subservice string) ([]string, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "config")
 
 	cacheKey := fmt.Sprintf("%s-aggregators", p.Profile)
 
-	creds, err := sso.GetCredentials(ctx, p.Profile, false)
+	login := sso.Login{Profile: p.Profile}
+	creds, err := login.GetCredentials(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -97,12 +98,12 @@ func Config(ctx context.Context, p *ConfigCommand, subservice string) ([]string,
 	// Filter results to an account, if specified by the user
 	accountFilter := ""
 	if p.Account != "" {
-		_, account, err := sso.GetAccount(p.Account)
+		account, err := login.GetProfile(p.Account)
 		if account == nil {
 			fmt.Printf("failed to get account %s, %s\n", p.Account, err)
 			return nil, err
 		}
-		accountFilter = fmt.Sprintf(" AND accountId like '%s'", account.AccountId)
+		accountFilter = fmt.Sprintf(" AND accountId like '%s'", account.AWSConfig.SSOAccountID)
 	}
 
 	spanQuery, tmpctx := opentracing.StartSpanFromContext(ctx, "configquery")
@@ -130,7 +131,7 @@ func Config(ctx context.Context, p *ConfigCommand, subservice string) ([]string,
 
 }
 
-func wrapper(p *ConfigCommand, args []string, subservice string) error {
+func (p *Config) wrapper(args []string, subservice string) error {
 	ctx := context.Background()
 
 	closer, err := tracing.InitTracing()
@@ -143,13 +144,17 @@ func wrapper(p *ConfigCommand, args []string, subservice string) error {
 	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "config")
 	defer span.Finish()
 
-	results, _ := Config(ctx, p, subservice)
-	return Print(p.Pager, results)
+	results, err := p.QueryConfig(ctx, subservice)
+	if err != nil {
+		return err
+	}
+
+	return p.Print(results)
 
 }
 
-func (p *Ec2ConfigCommand) Execute(args []string) error {
-	tmp := ConfigCommand{
+func (p *Ec2Config) Execute(args []string) error {
+	tmp := Config{
 		Profile: p.Profile,
 		Pager:   p.Pager,
 		Account: p.Account,
@@ -158,10 +163,10 @@ func (p *Ec2ConfigCommand) Execute(args []string) error {
 		Limit:   p.Limit,
 		Service: p.Service,
 	}
-	return wrapper(&tmp, args, p.Type)
+	return tmp.wrapper(args, p.Type)
 
 }
 
-func (p *ConfigCommand) Execute(args []string) error {
-	return wrapper(p, args, "%")
+func (p *Config) Execute(args []string) error {
+	return p.wrapper(args, "%")
 }

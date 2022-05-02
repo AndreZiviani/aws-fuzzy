@@ -51,6 +51,8 @@ type TreeDataIp struct {
 func processTables(ctx context.Context, ec2client *ec2.Client, tables []*vpc.DescribeTransitGatewayRouteTablesOutput) ([]*opts.TreeData, error) {
 	tableNode := make([]*opts.TreeData, 0)
 
+	login := sso.Login{}
+
 	for _, table := range tables {
 		var ipRanges []*opts.TreeData
 		ipRanges = make([]*opts.TreeData, 0) // cant know beforehand how many destinations
@@ -78,14 +80,15 @@ func processTables(ctx context.Context, ec2client *ec2.Client, tables []*vpc.Des
 			subnet := aws.ToString(attachmentsRoutine.Subnet)
 
 			//TODO: iterate attachments
-			account, _, err := sso.GetAccount(aws.ToString(attachments[0].ResourceOwnerId))
+			profile, err := login.GetProfileFromID(aws.ToString(attachments[0].ResourceOwnerId))
+			account := profile.Name
 			if err != nil {
-				account = attachments[0].ResourceOwnerId
+				account = *attachments[0].ResourceOwnerId
 			}
 
 			name := fmt.Sprintf("%s\n%s\n%s",
 				common.GetEC2Tag(attachments[0].Tags, "Name", aws.ToString(attachments[0].TransitGatewayAttachmentId)),
-				aws.ToString(account),
+				account,
 				aws.ToString(attachments[0].ResourceId),
 			)
 
@@ -124,7 +127,7 @@ func processTables(ctx context.Context, ec2client *ec2.Client, tables []*vpc.Des
 	return tableNode, nil
 }
 
-func (p *TGroutesCommand) Execute(args []string) error {
+func (p *TGroutes) Execute(args []string) error {
 	ctx := context.Background()
 
 	closer, err := tracing.InitTracing()
@@ -137,7 +140,9 @@ func (p *TGroutesCommand) Execute(args []string) error {
 	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "tgroute chart")
 	defer span.Finish()
 
-	creds, err := sso.GetCredentials(ctx, p.Profile, false)
+	login := sso.Login{Profile: p.Profile}
+
+	creds, err := login.GetCredentials(ctx)
 	if err != nil {
 		return nil
 	}
