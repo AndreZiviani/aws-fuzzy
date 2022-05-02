@@ -27,9 +27,6 @@ jobs:
             ${{ runner.OS }}-go-
             ${{ runner.OS }}-
 
-      - name: Install UPX
-        run: sudo apt install -y upx-ucl
-
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
