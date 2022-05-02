@@ -83,10 +83,19 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		credstore.Store(profile.Name, creds)
+
+		return &creds, nil
 	}
 
-	return &creds, err
+	if creds.HasKeys() && !creds.Expired() {
+		return &creds, nil
+	}
+
+	credstore.Clear(profile.Name)
+
+	return p.GetCredentials(ctx)
 }
 
 func (p *Login) GetProfile(profile string) (*cfaws.CFSharedConfig, error) {
