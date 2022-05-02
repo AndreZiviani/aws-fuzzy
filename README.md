@@ -155,6 +155,7 @@ Help Options:
 ## SSO
 
 Configure and login to AWS SSO and export session credentials.
+This feature uses the awesome [Granted](https://github.com/common-fate/granted) under the hood.
 
 ```sh
 Usage:
