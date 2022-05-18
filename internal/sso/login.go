@@ -6,10 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/common-fate/granted/pkg/cfaws"
 	"github.com/common-fate/granted/pkg/credstore"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -79,7 +82,14 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 		}
 
 		fmt.Fprintf(os.Stderr, "Could not find cached credentials, refreshing...\n")
-		creds, err = profile.AssumeTerminal(ctx, cfaws.ConfigOpts{Duration: time.Hour})
+
+		var creds aws.Credentials
+		if profile.ProfileType == "AWS_IAM" && profile.AWSConfig.MFASerial != "" {
+			creds, err = p.LoginMFA(ctx)
+		} else {
+			creds, err = profile.AssumeTerminal(ctx, cfaws.ConfigOpts{Duration: time.Hour})
+		}
+
 		if err != nil {
 			return nil, err
 		}
@@ -131,4 +141,40 @@ func (p *Login) PrintCredentials(creds *aws.Credentials) {
 		creds.SessionToken,
 		creds.Expires.String(),
 	)
+}
+
+func (p *Login) LoginMFA(ctx context.Context) (aws.Credentials, error) {
+	// Granted/AWS CLI only implements MFA authentication when assuming a role
+	// Here we want to just login and get a session token for the user without assuming a role
+
+	p.LoadProfiles()
+	profile := p.profiles[p.Profile]
+
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Fprintf(os.Stderr, "MFA Token: ")
+	mfatotp, _ := reader.ReadString('\n')
+	mfatotp = strings.TrimSuffix(mfatotp, "\n")
+
+	cfg, _ := config.LoadDefaultConfig(ctx)
+	stsClient := sts.NewFromConfig(cfg)
+
+	params := sts.GetSessionTokenInput{
+		SerialNumber: &profile.AWSConfig.MFASerial,
+		TokenCode:    &mfatotp,
+	}
+	session, err := stsClient.GetSessionToken(ctx, &params)
+	if err != nil {
+		return aws.Credentials{}, err
+	}
+
+	c := session.Credentials
+
+	creds := aws.Credentials{
+		AccessKeyID:     *c.AccessKeyId,
+		SecretAccessKey: *c.SecretAccessKey,
+		SessionToken:    *c.SessionToken,
+		Expires:         *c.Expiration,
+	}
+
+	return creds, err
 }
