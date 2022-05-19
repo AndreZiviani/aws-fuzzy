@@ -167,14 +167,7 @@ func (p *Login) LoginMFA(ctx context.Context) (aws.Credentials, error) {
 		return aws.Credentials{}, err
 	}
 
-	c := session.Credentials
-
-	creds := aws.Credentials{
-		AccessKeyID:     *c.AccessKeyId,
-		SecretAccessKey: *c.SecretAccessKey,
-		SessionToken:    *c.SessionToken,
-		Expires:         *c.Expiration,
-	}
+	creds := cfaws.TypeCredsToAwsCreds(*session.Credentials)
 
 	return creds, err
 }
