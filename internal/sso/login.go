@@ -150,10 +150,15 @@ func (p *Login) LoginMFA(ctx context.Context) (aws.Credentials, error) {
 	p.LoadProfiles()
 	profile := p.profiles[p.Profile]
 
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Fprintf(os.Stderr, "MFA Token: ")
-	mfatotp, _ := reader.ReadString('\n')
-	mfatotp = strings.TrimSuffix(mfatotp, "\n")
+	var mfatotp string
+	if len(p.MFATOTP) == 0 {
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Fprintf(os.Stderr, "MFA Token: ")
+		mfatotp, _ = reader.ReadString('\n')
+		mfatotp = strings.TrimSuffix(mfatotp, "\n")
+	} else {
+		mfatotp = p.MFATOTP
+	}
 
 	cfg, _ := config.LoadDefaultConfig(ctx)
 	stsClient := sts.NewFromConfig(cfg)

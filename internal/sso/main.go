@@ -9,6 +9,7 @@ import (
 type Login struct {
 	Profile  string `short:"p" long:"profile" env:"AWS_PROFILE" default:"default" description:"What profile to use"`
 	Ask      bool   `long:"ask" env:"AWSFUZZY_ASK" description:"Ask before continuing"`
+	MFATOTP  string `short:"t" long:"token" description:"MFA TOTP if using IAM authentication with MFA"`
 	profiles cfaws.CFSharedConfigs
 }
 
