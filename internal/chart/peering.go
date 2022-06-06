@@ -76,6 +76,7 @@ func (p *Peering) Execute(args []string) error {
 	AddToGraph(graph, nodes, links, categories)
 
 	page := components.NewPage()
+
 	page.AddCharts(graph)
 	f, err := os.Create("graph.html")
 	if err != nil {
@@ -90,6 +91,10 @@ func NewGraph() *charts.Graph {
 
 	graph := charts.NewGraph()
 	graph.SetGlobalOptions(
+		charts.WithInitializationOpts(opts.Initialization{
+			Width: "100%", Height: "95vh",
+			AssetsHost: "https://cdn.jsdelivr.net/npm/echarts@4/dist/", //use updated upstream js
+		}),
 		charts.WithTitleOpts(opts.Title{Title: "Peering Connections"}),
 		charts.WithToolboxOpts(opts.Toolbox{
 			Show: true,
