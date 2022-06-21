@@ -64,7 +64,7 @@ func (p *Session) DoSsm(ctx context.Context, id string) error {
 	*/
 
 	// for now we have to use the embeded the binary
-	return ssm_plugin.RunPlugin(
+	ssm_plugin.RunPlugin(
 		string(sessionJson),
 		p.Region,
 		"StartSession",
@@ -72,6 +72,11 @@ func (p *Session) DoSsm(ctx context.Context, id string) error {
 		string(inputJson),
 	)
 
+	_, err = ssmclient.TerminateSession(ctx, &awsssm.TerminateSessionInput{
+		SessionId: session.SessionId,
+	})
+
+	return err
 }
 
 func (p *Session) GetInstances(ctx context.Context) (*ec2.DescribeInstancesOutput, error) {
