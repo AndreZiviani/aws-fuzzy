@@ -15,7 +15,8 @@ import (
 	"github.com/AndreZiviani/aws-fuzzy/internal/sso"
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	config "github.com/aws/aws-sdk-go-v2/service/configservice"
+	"github.com/aws/aws-sdk-go-v2/config"
+	awsconfig "github.com/aws/aws-sdk-go-v2/service/configservice"
 	configtypes "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	opentracing "github.com/opentracing/opentracing-go"
 	//"github.com/opentracing/opentracing-go/log"
@@ -53,12 +54,12 @@ func (p *Config) QueryConfig(ctx context.Context, subservice string) ([]string, 
 		return nil, err
 	}
 
-	cfg, err := sso.NewAwsConfig(ctx, creds)
+	cfg, err := sso.NewAwsConfig(ctx, creds, config.WithRegion(p.Region))
 	if err != nil {
 		return nil, err
 	}
 
-	configclient := config.NewFromConfig(cfg)
+	configclient := awsconfig.NewFromConfig(cfg)
 
 	// Check if we have a cached result of available aggregators
 	c, _ := cache.New("config")
@@ -76,7 +77,7 @@ func (p *Config) QueryConfig(ctx context.Context, subservice string) ([]string, 
 		// Searching for available aggregators
 		spanGetAggregators, tmpctx := opentracing.StartSpanFromContext(ctx, "configgetaggregators")
 		tmp, err := configclient.DescribeConfigurationAggregators(tmpctx,
-			&config.DescribeConfigurationAggregatorsInput{},
+			&awsconfig.DescribeConfigurationAggregatorsInput{},
 		)
 		if err != nil {
 			fmt.Printf("failed to describe configuration aggregators, %s\n", err)
@@ -115,7 +116,7 @@ func (p *Config) QueryConfig(ctx context.Context, subservice string) ([]string, 
 	query := fmt.Sprintf("SELECT %s WHERE %s %s", p.Select, filter, accountFilter)
 
 	result, err := configclient.SelectAggregateResourceConfig(tmpctx,
-		&config.SelectAggregateResourceConfigInput{
+		&awsconfig.SelectAggregateResourceConfigInput{
 			ConfigurationAggregatorName: aggregators[0].ConfigurationAggregatorName,
 			Expression:                  aws.String(query),
 		},
@@ -158,6 +159,7 @@ func (p *Ec2Config) Execute(args []string) error {
 		Profile: p.Profile,
 		Pager:   p.Pager,
 		Account: p.Account,
+		Region:  p.Region,
 		Select:  p.Select,
 		Filter:  p.Filter,
 		Limit:   p.Limit,
