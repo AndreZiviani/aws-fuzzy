@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/AndreZiviani/aws-fuzzy/internal/ssm_plugin"
 	"github.com/AndreZiviani/aws-fuzzy/internal/sso"
@@ -14,8 +15,8 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
-func (p *Session) DoSsm(ctx context.Context, id string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "ssmsession")
+func (p *PortForward) DoPortForward(ctx context.Context, id, local, remote string) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "ssmportforward")
 	defer span.Finish()
 
 	login := sso.Login{Profile: p.Profile}
@@ -29,7 +30,15 @@ func (p *Session) DoSsm(ctx context.Context, id string) error {
 		return err
 	}
 
-	input := &awsssm.StartSessionInput{Target: &id}
+	docName := "AWS-StartPortForwardingSession" // https://us-east-1.console.aws.amazon.com/systems-manager/documents/AWS-StartPortForwardingSession/description?region=us-east-1
+	input := &awsssm.StartSessionInput{
+		DocumentName: &docName,
+		Parameters: map[string][]string{
+			"portNumber":      []string{remote},
+			"localPortNumber": []string{local},
+		},
+		Target: &id,
+	}
 	inputJson, err := json.Marshal(input)
 
 	ssmclient := awsssm.NewFromConfig(cfg)
@@ -76,7 +85,7 @@ func (p *Session) DoSsm(ctx context.Context, id string) error {
 	return err
 }
 
-func (p *Session) Execute(args []string) error {
+func (p *PortForward) Execute(args []string) error {
 
 	ctx := context.Background()
 
@@ -113,5 +122,7 @@ func (p *Session) Execute(args []string) error {
 		return err
 	}
 
-	return p.DoSsm(ctx, aws.ToString(instance.InstanceId))
+	ports := strings.Split(p.Ports, ":")
+
+	return p.DoPortForward(ctx, aws.ToString(instance.InstanceId), ports[0], ports[1])
 }
