@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	cacheDir = fmt.Sprintf("%s/.aws-fuzzy/", common.UserHomeDir)
+	CacheDir = fmt.Sprintf("%s/.aws-fuzzy/", common.UserHomeDir)
 )
 
 // exists returns whether the given file or directory exists
@@ -25,14 +25,14 @@ func exists(path string) (bool, error) {
 }
 
 func New(service string) (cachego.Cache, error) {
-	if ok, err := exists(cacheDir); !ok {
-		err = os.Mkdir(cacheDir, 0700)
+	if ok, err := exists(CacheDir); !ok {
+		err = os.Mkdir(CacheDir, 0700)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	cache := file.New(cacheDir)
+	cache := file.New(CacheDir)
 
 	return cache, nil
 }
