@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/AndreZiviani/aws-fuzzy/internal/peering"
+	"github.com/AndreZiviani/aws-fuzzy/internal/sso"
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/components"
@@ -16,12 +17,18 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
-type ConfigResult struct {
-	Configuration ConfigConfiguration `json:"configuration"`
-	Tags          []ConfigTags        `json:"tags"`
+type VPCResult struct {
+	VpcId   string       `json:"resourceId"`
+	Tags    []ConfigTags `json:"tags"`
+	OwnerId string       `json:"configuration.ownerId"`
 }
 
-type ConfigConfiguration struct {
+type PeeringResult struct {
+	Configuration PeeringConfiguration `json:"configuration"`
+	Tags          []ConfigTags         `json:"tags"`
+}
+
+type PeeringConfiguration struct {
 	RequesterVpc ConfigVpc `json:"requesterVpcInfo"`
 	AccepterVpc  ConfigVpc `json:"accepterVpcInfo"`
 	PeeringId    string    `json:"vpcPeeringConnectionId"`
@@ -30,6 +37,7 @@ type ConfigConfiguration struct {
 type ConfigVpc struct {
 	VpcId   string `json:"vpcId"`
 	OwnerId string `json:"ownerId"`
+	Region  string `json:"region"`
 }
 
 type ConfigTags struct {
@@ -42,6 +50,12 @@ type PeeringConnection struct {
 	RequesterVpc string
 	Accepter     string
 	AccepterVpc  string
+}
+
+type Node struct {
+	Id      string
+	Name    string
+	Account string
 }
 
 func (p *Peering) Execute(args []string) error {
@@ -57,21 +71,27 @@ func (p *Peering) Execute(args []string) error {
 	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "chart")
 	defer span.Finish()
 
-	peerings, err := peering.Peering(ctx, p.Profile, p.Account)
+	peeringsJson, vpcsJson, err := peering.Peering(ctx, p.Profile, p.Account, p.Region)
 
 	if err != nil {
 		return err
 	}
 
-	tmp := strings.Join(peerings[:], ",")
+	tmp := strings.Join(peeringsJson[:], ",")
 	tmp = fmt.Sprintf("[%s]", tmp)
 
-	o := []ConfigResult{}
-	_ = json.Unmarshal([]byte(tmp), &o)
+	peerings := []PeeringResult{}
+	_ = json.Unmarshal([]byte(tmp), &peerings)
+
+	tmp = strings.Join(vpcsJson[:], ",")
+	tmp = fmt.Sprintf("[%s]", tmp)
+
+	vpcs := []VPCResult{}
+	_ = json.Unmarshal([]byte(tmp), &vpcs)
 
 	graph := NewGraph()
 
-	nodes, links, categories := mapResult(o)
+	nodes, links, categories := mapResult(peerings, vpcs)
 
 	AddToGraph(graph, nodes, links, categories)
 
@@ -113,38 +133,62 @@ func NewGraph() *charts.Graph {
 	return graph
 }
 
-func mapResult(result []ConfigResult) ([]opts.GraphNode, []opts.GraphLink, []*opts.GraphCategory) {
+func mapResult(peerings []PeeringResult, vpcs []VPCResult) ([]opts.GraphNode, []opts.GraphLink, []*opts.GraphCategory) {
 	categories := make([]*opts.GraphCategory, 0)
 	categories = append(categories, &opts.GraphCategory{}) // workaround bug
 
 	links := make([]opts.GraphLink, 0)
 	nodes := make([]opts.GraphNode, 0)
 
-	dnodes := make(map[string]string)
+	dnodes := make(map[string]Node)
 
-	for _, peering := range result {
+	login := sso.Login{}
+	login.LoadProfiles()
 
-		dnodes[peering.Configuration.RequesterVpc.VpcId] = peering.Configuration.RequesterVpc.OwnerId
-		dnodes[peering.Configuration.AccepterVpc.VpcId] = peering.Configuration.AccepterVpc.OwnerId
+	var requesterAccountName, accepterAccountName string
+
+	for _, peering := range peerings {
+
+		requesterAccount, err := login.GetProfileFromID(peering.Configuration.RequesterVpc.OwnerId)
+		if err == nil {
+			requesterAccountName = fmt.Sprintf("%s\n(%s)", requesterAccount.Name, peering.Configuration.RequesterVpc.Region)
+		} else {
+			requesterAccountName = fmt.Sprintf("%s\n(%s)", peering.Configuration.RequesterVpc.OwnerId, peering.Configuration.RequesterVpc.Region)
+		}
+
+		accepterAccount, err := login.GetProfileFromID(peering.Configuration.AccepterVpc.OwnerId)
+		if err == nil {
+			accepterAccountName = fmt.Sprintf("%s\n(%s)", accepterAccount.Name, peering.Configuration.AccepterVpc.Region)
+		} else {
+			accepterAccountName = fmt.Sprintf("%s\n(%s)", peering.Configuration.AccepterVpc.OwnerId, peering.Configuration.AccepterVpc.Region)
+		}
+
+		requesterVpcId := peering.Configuration.RequesterVpc.VpcId
+		requesterVpcName := getVpcName(vpcs, requesterVpcId)
+
+		accepterVpcId := peering.Configuration.AccepterVpc.VpcId
+		accepterVpcName := getVpcName(vpcs, accepterVpcId)
+
+		dnodes[requesterVpcId] = Node{Id: requesterVpcId, Account: requesterAccountName, Name: requesterVpcName}
+		dnodes[accepterVpcId] = Node{Id: accepterVpcId, Account: accepterAccountName, Name: accepterVpcName}
 
 		links = append(links, opts.GraphLink{
-			Source: peering.Configuration.RequesterVpc.VpcId,
-			Target: peering.Configuration.AccepterVpc.VpcId,
-			//Value:  peering.Configuration.PeeringId,
+			Source: requesterVpcName,
+			Target: accepterVpcName,
 		})
 	}
 
-	for k, v := range dnodes {
+	for _, v := range dnodes {
 
 		categories = append(categories,
 			&opts.GraphCategory{
-				Name:  v,
+				Name:  v.Account,
 				Label: &opts.Label{Show: true, Color: "auto"},
 			})
 
 		nodes = append(nodes,
 			opts.GraphNode{
-				Name:     k,
+				Name:     v.Name,
 				Category: len(categories) - 1,
 			},
 		)
@@ -175,4 +219,26 @@ func AddToGraph(graph *charts.Graph, nodes []opts.GraphNode, links []opts.GraphL
 				},
 			}),
 		)
+}
+
+func getVpcName(vpcs []VPCResult, key string) string {
+	for _, vpc := range vpcs {
+		if vpc.VpcId == key {
+			for _, tag := range vpc.Tags {
+				if tag.Key == "Name" {
+					return fmt.Sprintf("%s\n(%s)", tag.Value, key)
+				}
+			}
+		}
+	}
+	return key
+}
+
+func getTagName(tags []ConfigTags, key string) string {
+	for _, tag := range tags {
+		if tag.Key == "Name" {
+			return tag.Value
+		}
+	}
+	return key
 }

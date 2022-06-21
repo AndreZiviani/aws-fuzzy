@@ -8,26 +8,50 @@ import (
 	//"github.com/opentracing/opentracing-go/log"
 )
 
-func Peering(ctx context.Context, profile string, account string) ([]string, error) {
+func Peering(ctx context.Context, profile string, account string, region string) ([]string, []string, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "peering")
 	defer span.Finish()
 
-	query := config.Config{
+	peering := config.Config{
 		Profile: profile,
 		Account: account,
+		Region:  region,
 		Pager:   false,
 		Service: "EC2",
 		Select: "configuration.requesterVpcInfo.ownerId" +
 			", configuration.requesterVpcInfo.vpcId" +
+			", configuration.requesterVpcInfo.region" +
 			", configuration.accepterVpcInfo.vpcId" +
 			", configuration.accepterVpcInfo.ownerId" +
+			", configuration.accepterVpcInfo.region" +
 			", configuration.vpcPeeringConnectionId" +
-			", tags.key, tags.value",
+			", tags",
 		Filter: "",
 		Limit:  0,
 	}
 
-	result, err := query.QueryConfig(ctx, "VPCPeeringConnection%")
+	vpc := config.Config{
+		Profile: profile,
+		Account: account,
+		Region:  region,
+		Pager:   false,
+		Service: "EC2",
+		Select: "resourceId" +
+			", configuration.ownerId" +
+			", tags",
+		Filter: "",
+		Limit:  0,
+	}
 
-	return result, err
+	peeringResult, err := peering.QueryConfig(ctx, "VPCPeeringConnection%")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	vpcResult, err := vpc.QueryConfig(ctx, "VPC")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return peeringResult, vpcResult, nil
 }
