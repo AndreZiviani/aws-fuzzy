@@ -5,12 +5,11 @@ before:
     # You may remove this if you don't use go modules.
     - go mod download
 builds:
-  - env:
+  - id: "linux"
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
-      - windows
-      - darwin
     goarch:
       - amd64
       - arm
@@ -18,13 +17,23 @@ builds:
     goarm:
       - 6
       - 7
-    ignore:
-      - goos: darwin
-        goarch: arm
-      - goos: windows
-        goarch: arm
-      - goos: windows
-        goarch: arm64
+    main: ./cmd/aws-fuzzy/main.go
+  - id: "windows"
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - windows
+    goarch:
+      - amd64
+    main: ./cmd/aws-fuzzy/main.go
+  - id: "macos"
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
     main: ./cmd/aws-fuzzy/main.go
 archives:
   - format: binary
