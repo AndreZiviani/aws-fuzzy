@@ -3,8 +3,9 @@ package cli
 import (
 	"github.com/AndreZiviani/aws-fuzzy/internal/chart"
 	"github.com/AndreZiviani/aws-fuzzy/internal/config"
-	"github.com/AndreZiviani/aws-fuzzy/internal/sso"
 	"github.com/AndreZiviani/aws-fuzzy/internal/ssh"
+	"github.com/AndreZiviani/aws-fuzzy/internal/ssm"
+	"github.com/AndreZiviani/aws-fuzzy/internal/sso"
 	flags "github.com/jessevdk/go-flags"
 )
 
@@ -17,5 +18,6 @@ func Run() {
 	config.Init(Parser)
 	chart.Init(Parser)
 	sso.Init(Parser)
+	ssm.Init(Parser)
 	Parser.Parse()
 }
