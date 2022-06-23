@@ -2,11 +2,13 @@ package sso
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/common-fate/granted/pkg/cfaws"
 )
 
 func NewAwsConfig(ctx context.Context, creds *aws.Credentials, opts ...func(*config.LoadOptions) error) (aws.Config, error) {
@@ -25,4 +27,46 @@ func NewAwsConfig(ctx context.Context, creds *aws.Credentials, opts ...func(*con
 	}
 
 	return cfg, nil
+}
+
+func (p *Login) GetProfile(profile string) (*cfaws.CFSharedConfig, error) {
+	var tmp *cfaws.CFSharedConfig
+	var ok bool
+	if tmp, ok = p.profiles[profile]; !ok {
+		return nil, errors.New(fmt.Sprintf("profile %s not found!", profile))
+	}
+
+	return tmp, nil
+}
+
+func (p *Login) GetProfileFromID(id string) (*cfaws.CFSharedConfig, error) {
+	for _, v := range p.profiles {
+		if v.ProfileType == "AWS_SSO" {
+			if id == v.AWSConfig.SSOAccountID {
+				return v, nil
+			}
+		} else if v.ProfileType == "AWS_IAM" {
+			// we dont have a simple way to find out the account id
+			// we could extract the account id from the role arn but not all profiles assume a role
+			// another option is querying STS but it will probably be slow
+			continue
+		}
+	}
+
+	return nil, errors.New(fmt.Sprintf("could not find a profile with account id %s!", id))
+}
+
+func (p *Login) PrintCredentials(creds *aws.Credentials) {
+	fmt.Printf(
+		"export AWS_ACCESS_KEY_ID='%s'\n"+
+			"export AWS_SECRET_ACCESS_KEY='%s'\n"+
+			"export AWS_SESSION_TOKEN='%s'\n"+
+			"export AWS_SECURITY_TOKEN='%s'\n"+
+			"export AWS_EXPIRES='%s'\n",
+		creds.AccessKeyID,
+		creds.SecretAccessKey,
+		creds.SessionToken,
+		creds.SessionToken,
+		creds.Expires.String(),
+	)
 }

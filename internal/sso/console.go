@@ -9,6 +9,7 @@ import (
 	"github.com/common-fate/granted/pkg/browsers"
 	"github.com/common-fate/granted/pkg/cfaws"
 	"github.com/common-fate/granted/pkg/config"
+	"github.com/common-fate/granted/pkg/debug"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
@@ -25,6 +26,11 @@ func (p *Console) Execute(args []string) error {
 	tracer := opentracing.GlobalTracer()
 	spanSso, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssoconsolecmd")
 	defer spanSso.Finish()
+
+	if p.Verbose {
+		// enable granted debug
+		debug.CliVerbosity = debug.VerbosityDebug
+	}
 
 	creds, err := login.GetCredentials(ctx)
 	if err != nil {

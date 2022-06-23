@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/common-fate/granted/pkg/cfaws"
+	"github.com/common-fate/granted/pkg/debug"
 	opentracing "github.com/opentracing/opentracing-go"
 	"gopkg.in/ini.v1"
 )
@@ -207,5 +208,11 @@ func (p *Configure) Execute(args []string) error {
 	tracer := opentracing.GlobalTracer()
 	spanSso, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssoconfigure")
 	defer spanSso.Finish()
+
+	if p.Verbose {
+		// enable granted debug
+		debug.CliVerbosity = debug.VerbosityDebug
+	}
+
 	return p.ConfigureProfiles(ctx)
 }
