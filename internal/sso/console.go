@@ -77,5 +77,5 @@ func (p *Console) OpenBrowser(ctx context.Context, credentials *aws.Credentials)
 		return nil
 	}
 
-	return browsers.LaunchConsoleSession(browsers.SessionFromCredentials(*credentials), browserOpts, "", profile.AWSConfig.Region)
+	return browsers.LaunchConsoleSession(browsers.SessionFromCredentials(*credentials), browserOpts, "", region)
 }
