@@ -16,6 +16,7 @@ type Login struct {
 
 type Console struct {
 	Profile string `short:"p" long:"profile" env:"AWS_PROFILE" default:"default" description:"What profile to use"`
+	Region  string `short:"r" long:"region" env:"AWS_REGION" default:"us-east-1" description:"What region to use"`
 	Url     bool   `short:"u" long:"url" description:"Only print login url"`
 	Verbose bool   `short:"v" long:"verbose" description:"Enable verbose messages"`
 }

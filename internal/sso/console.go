@@ -7,7 +7,6 @@ import (
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/common-fate/granted/pkg/browsers"
-	"github.com/common-fate/granted/pkg/cfaws"
 	"github.com/common-fate/granted/pkg/config"
 	"github.com/common-fate/granted/pkg/debug"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -46,12 +45,20 @@ func (p *Console) OpenBrowser(ctx context.Context, credentials *aws.Credentials)
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ssorolecreds")
 	defer span.Finish()
 
-	awsProfiles, _ := cfaws.GetProfilesFromDefaultSharedConfig(ctx)
+	login := Login{}
+	login.LoadProfiles()
+	profile, err := login.GetProfile(p.Profile)
+	if err != nil {
+		return err
+	}
 
-	profile := awsProfiles[p.Profile]
+	region := p.Region
+	if len(profile.AWSConfig.Region) > 0 {
+		region = profile.AWSConfig.Region
+	}
 
 	browserOpts := browsers.BrowserOpts{Profile: profile.Name}
-	url, err := browsers.MakeUrl(browsers.SessionFromCredentials(*credentials), browserOpts, "", profile.AWSConfig.Region)
+	url, err := browsers.MakeUrl(browsers.SessionFromCredentials(*credentials), browserOpts, "", region)
 	if err != nil {
 		return err
 	}
