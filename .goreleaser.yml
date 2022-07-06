@@ -18,6 +18,8 @@ builds:
       - 6
       - 7
     main: ./cmd/aws-fuzzy/main.go
+    ldflags:
+      - -X github.com/AndreZiviani/aws-fuzzy/internal/version.versionTag={{.Version}}
   - id: "windows"
     env:
       - CGO_ENABLED=0
@@ -26,6 +28,8 @@ builds:
     goarch:
       - amd64
     main: ./cmd/aws-fuzzy/main.go
+    ldflags:
+      - -X github.com/AndreZiviani/aws-fuzzy/internal/version.versionTag={{.Version}}
   - id: "macos"
     env:
       - CGO_ENABLED=1
@@ -35,6 +39,8 @@ builds:
       - amd64
       - arm64
     main: ./cmd/aws-fuzzy/main.go
+    ldflags:
+      - -X github.com/AndreZiviani/aws-fuzzy/internal/version.versionTag={{.Version}}
 archives:
   - format: binary
 checksum:

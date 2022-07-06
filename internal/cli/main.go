@@ -6,6 +6,7 @@ import (
 	"github.com/AndreZiviani/aws-fuzzy/internal/ssh"
 	"github.com/AndreZiviani/aws-fuzzy/internal/ssm"
 	"github.com/AndreZiviani/aws-fuzzy/internal/sso"
+	"github.com/AndreZiviani/aws-fuzzy/internal/version"
 	flags "github.com/jessevdk/go-flags"
 )
 
@@ -19,5 +20,6 @@ func Run() {
 	chart.Init(Parser)
 	sso.Init(Parser)
 	ssm.Init(Parser)
+	version.Init(Parser)
 	Parser.Parse()
 }
