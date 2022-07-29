@@ -29,7 +29,13 @@ func (p *Session) DoSsm(ctx context.Context, id string) error {
 		return err
 	}
 
-	input := &awsssm.StartSessionInput{Target: &id}
+	input := &awsssm.StartSessionInput{
+		Target:       &id,
+		DocumentName: aws.String("AWS-StartInteractiveCommand"),
+		Parameters: map[string][]string{
+			"command": []string{p.Shell},
+		},
+	}
 	inputJson, err := json.Marshal(input)
 
 	ssmclient := awsssm.NewFromConfig(cfg)
