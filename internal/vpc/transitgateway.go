@@ -2,7 +2,6 @@ package vpc
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/AndreZiviani/aws-fuzzy/internal/common"
@@ -58,7 +57,10 @@ func GetEC2Client(ctx context.Context, clients map[string]map[string]*ec2.Client
 	}
 
 	// creating a client on the specified region
-	client, _ := NewEC2Client(ctx, profile, region)
+	client, err := NewEC2Client(ctx, profile, region)
+	if err != nil {
+		return nil, err
+	}
 	clients[profile][*region] = client
 
 	return client, nil
@@ -142,6 +144,7 @@ func DescribeTransitGatewayRegistrationsFromARN(ctx context.Context, transitGate
 	output := make([]*DescribeTGRegistrationsOutput, len(transitGatewaysARN))
 
 	login := sso.Login{}
+	login.LoadProfiles()
 
 	for i, tg := range transitGatewaysARN {
 
@@ -149,14 +152,18 @@ func DescribeTransitGatewayRegistrationsFromARN(ctx context.Context, transitGate
 
 		profile, err := login.GetProfileFromID(arn.AccountID)
 		if err != nil {
-			fmt.Printf("failed to get account, %s\n", err)
-			return nil, err
+			// could not find a profile with this account id so we cant get more information about this TGW
+			output[i] = &DescribeTGRegistrationsOutput{
+				Name:     arn.Resource,
+				Region:   arn.Region,
+				Resource: arn.Resource,
+			}
+			continue
 		}
 
 		// get a ec2 client instance on this region using the specified profile
 		client, err := GetEC2Client(ctx, clients, profile.Name, &arn.Region)
 		if err != nil {
-			fmt.Printf("failed to create ec2 client, %s\n", err)
 			return nil, err
 		}
 

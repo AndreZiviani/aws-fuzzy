@@ -29,6 +29,7 @@ func mapRegistrations(tgs []*vpc.DescribeTGRegistrationsOutput) *opts.TreeData {
 	regions := make(map[string][]*opts.TreeData)
 
 	login := sso.Login{}
+	login.LoadProfiles()
 
 	for _, tg := range tgs {
 		tgwchildren := make([]*opts.TreeData, 0)
@@ -165,6 +166,7 @@ func NetworkManager(ctx context.Context, p *NM) ([]opts.TreeData, error) {
 	defer span.Finish()
 
 	login := sso.Login{Profile: p.Profile}
+	login.LoadProfiles()
 
 	creds, err := login.GetCredentials(ctx)
 	if err != nil {

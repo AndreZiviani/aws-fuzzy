@@ -52,6 +52,7 @@ func processTables(ctx context.Context, ec2client *ec2.Client, tables []*vpc.Des
 	tableNode := make([]*opts.TreeData, 0)
 
 	login := sso.Login{}
+	login.LoadProfiles()
 
 	for _, table := range tables {
 		var ipRanges []*opts.TreeData
@@ -81,9 +82,9 @@ func processTables(ctx context.Context, ec2client *ec2.Client, tables []*vpc.Des
 
 			//TODO: iterate attachments
 			profile, err := login.GetProfileFromID(aws.ToString(attachments[0].ResourceOwnerId))
-			account := profile.Name
-			if err != nil {
-				account = *attachments[0].ResourceOwnerId
+			account := *attachments[0].ResourceOwnerId
+			if err == nil {
+				account = profile.Name
 			}
 
 			name := fmt.Sprintf("%s\n%s\n%s",
