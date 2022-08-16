@@ -32,6 +32,12 @@ type PeeringConfiguration struct {
 	RequesterVpc ConfigVpc `json:"requesterVpcInfo"`
 	AccepterVpc  ConfigVpc `json:"accepterVpcInfo"`
 	PeeringId    string    `json:"vpcPeeringConnectionId"`
+	Status       string    `json:"status"`
+}
+
+type PeeringStatus struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
 }
 
 type ConfigVpc struct {
@@ -146,8 +152,14 @@ func mapResult(peerings []PeeringResult, vpcs []VPCResult) ([]opts.GraphNode, []
 	login.LoadProfiles()
 
 	var requesterAccountName, accepterAccountName string
+	var peeringStatus PeeringStatus
 
 	for _, peering := range peerings {
+
+		_ = json.Unmarshal([]byte(peering.Configuration.Status), &peeringStatus)
+		if peeringStatus.Code != "active" {
+			continue
+		}
 
 		requesterAccount, err := login.GetProfileFromID(peering.Configuration.RequesterVpc.OwnerId)
 		if err == nil {

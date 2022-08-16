@@ -25,6 +25,7 @@ func Peering(ctx context.Context, profile string, account string, region string)
 			", configuration.accepterVpcInfo.ownerId" +
 			", configuration.accepterVpcInfo.region" +
 			", configuration.vpcPeeringConnectionId" +
+			", configuration.status" +
 			", tags",
 		Filter: "",
 		Limit:  0,
