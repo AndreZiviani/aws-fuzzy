@@ -57,7 +57,17 @@ func ExtractAssets() (string, error) {
 	pluginPath := filepath.Join(cache.CacheDir, GetSsmPluginName())
 	info, err := os.Stat(pluginPath)
 
-	if os.IsNotExist(err) || int(info.Size()) != len(plugin) {
+	if os.IsNotExist(err) {
+		err = os.Mkdir(cache.CacheDir, 0700)
+		if err != nil {
+			return "", err
+		}
+
+		err := ioutil.WriteFile(pluginPath, plugin, 0755)
+		return pluginPath, err
+	}
+
+	if int(info.Size()) != len(plugin) {
 		// extract or update the ssm-plugin
 		err := ioutil.WriteFile(pluginPath, plugin, 0755)
 		return "", err
