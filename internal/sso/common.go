@@ -29,23 +29,18 @@ func NewAwsConfig(ctx context.Context, creds *aws.Credentials, opts ...func(*con
 	return cfg, nil
 }
 
-func (p *Login) GetProfile(profile string) (*cfaws.CFSharedConfig, error) {
-	var tmp *cfaws.CFSharedConfig
-	var ok bool
-	if tmp, ok = p.profiles[profile]; !ok {
-		return nil, errors.New(fmt.Sprintf("profile %s not found!", profile))
-	}
-
-	return tmp, nil
+func (p *Login) GetProfile(profile string) (*cfaws.Profile, error) {
+	return p.profiles.LoadInitialisedProfile(context.TODO(), profile)
 }
 
-func (p *Login) GetProfileFromID(id string) (*cfaws.CFSharedConfig, error) {
-	for _, v := range p.profiles {
-		if v.ProfileType == "AWS_SSO" {
-			if id == v.AWSConfig.SSOAccountID {
-				return v, nil
+func (p *Login) GetProfileFromID(id string) (*cfaws.Profile, error) {
+	for _, v := range p.profiles.ProfileNames {
+		profile, _ := p.GetProfile(v)
+		if profile.ProfileType == "AWS_SSO" {
+			if id == profile.AWSConfig.SSOAccountID {
+				return profile, nil
 			}
-		} else if v.ProfileType == "AWS_IAM" {
+		} else if profile.ProfileType == "AWS_IAM" {
 			// we dont have a simple way to find out the account id
 			// we could extract the account id from the role arn but not all profiles assume a role
 			// another option is querying STS but it will probably be slow

@@ -19,7 +19,7 @@ func GetInstances(ctx context.Context, cfg aws.Config) (*ec2.DescribeInstancesOu
 	ssmclient := awsssm.NewFromConfig(cfg)
 	ssmPag := awsssm.NewDescribeInstanceInformationPaginator(
 		ssmclient,
-		&awsssm.DescribeInstanceInformationInput{MaxResults: 50},
+		&awsssm.DescribeInstanceInformationInput{MaxResults: aws.Int32(50)},
 	)
 	ssmInstances := make([]*awsssm.DescribeInstanceInformationOutput, 0)
 	for ssmPag.HasMorePages() {

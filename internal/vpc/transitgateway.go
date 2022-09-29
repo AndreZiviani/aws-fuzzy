@@ -89,13 +89,27 @@ func DescribeTransitGateway(ctx context.Context, ec2client *ec2.Client, tg *stri
 	return &tginfo.TransitGateways[0], nil
 }
 
-func GetTransitGatewayAttachmentsByTG(ctx context.Context, ec2client *ec2.Client, tg string) ([]ec2types.TransitGatewayAttachment, error) {
+func GetTransitGatewayAttachmentsByTG(ctx context.Context, clients map[string]map[string]*ec2.Client, attachmentARN arn.ARN) ([]ec2types.TransitGatewayAttachment, error) {
 	spanDescribeTGAttachments, ctx := opentracing.StartSpanFromContext(ctx, "describetransitgwattachments")
 	defer spanDescribeTGAttachments.Finish()
 
-	tgid := strings.Split(tg, "/")
+	login := sso.Login{}
+	login.LoadProfiles()
 
-	tgattach, err := ec2client.DescribeTransitGatewayAttachments(ctx,
+	tgwProfile, err := login.GetProfileFromID(attachmentARN.AccountID)
+	if err != nil {
+		return nil, nil // TODO
+	}
+
+	// get a ec2 client instance on this region using the specified profile
+	tgwClient, err := GetEC2Client(ctx, clients, tgwProfile.Name, &attachmentARN.Region)
+	if err != nil {
+		return nil, err
+	}
+
+	tgid := strings.Split(attachmentARN.Resource, "/")
+
+	tgattach, err := tgwClient.DescribeTransitGatewayAttachments(ctx,
 		&ec2.DescribeTransitGatewayAttachmentsInput{
 			Filters: []ec2types.Filter{
 				{
@@ -110,7 +124,33 @@ func GetTransitGatewayAttachmentsByTG(ctx context.Context, ec2client *ec2.Client
 		return []ec2types.TransitGatewayAttachment{}, err
 	}
 
-	return tgattach.TransitGatewayAttachments, nil
+	detailedAttachments := make([]ec2types.TransitGatewayAttachment, len(tgattach.TransitGatewayAttachments))
+
+	for i, attach := range tgattach.TransitGatewayAttachments {
+		detailedAttachments[i] = attach
+
+		profile, err := login.GetProfileFromID(*attach.ResourceOwnerId)
+		if err != nil {
+			return nil, err // TODO
+		}
+		client, err := GetEC2Client(ctx, clients, profile.Name, &attachmentARN.Region)
+
+		if attach.ResourceType == ec2types.TransitGatewayAttachmentResourceTypeVpc {
+			vpc, err := client.DescribeVpcs(ctx, &ec2.DescribeVpcsInput{
+				VpcIds: []string{aws.ToString(attach.ResourceId)},
+			})
+			if err != nil {
+				return nil, err // TODO
+			}
+			name := common.GetEC2Tag(vpc.Vpcs[0].Tags, "Name", aws.ToString(attach.ResourceId))
+			cidr := vpc.Vpcs[0].CidrBlock
+
+			detailedAttachments[i].Tags = common.SetEC2Tag(detailedAttachments[i].Tags, "Name", &name)
+			detailedAttachments[i].Tags = common.SetEC2Tag(detailedAttachments[i].Tags, "cidr", cidr)
+		}
+	}
+
+	return detailedAttachments, nil
 }
 
 func GetTransitGatewayAttachmentsByAttachment(ctx context.Context, ec2client *ec2.Client, attachment string) ([]ec2types.TransitGatewayAttachment, error) {
@@ -167,7 +207,7 @@ func DescribeTransitGatewayRegistrationsFromARN(ctx context.Context, transitGate
 			return nil, err
 		}
 
-		attachments, err := GetTransitGatewayAttachmentsByTG(ctx, client, arn.Resource)
+		attachments, err := GetTransitGatewayAttachmentsByTG(ctx, clients, arn)
 
 		// get transit gateway Name tag
 		tginfo, _ := DescribeTransitGateway(ctx, client, &arn.Resource)

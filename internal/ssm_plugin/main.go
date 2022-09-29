@@ -12,7 +12,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/AndreZiviani/aws-fuzzy/internal/cache"
+	"github.com/AndreZiviani/aws-fuzzy/internal/common"
 	wraperror "github.com/gjbae1212/go-wraperror"
 )
 
@@ -54,11 +54,11 @@ func ExtractAssets() (string, error) {
 		return "", err
 	}
 
-	pluginPath := filepath.Join(cache.CacheDir, GetSsmPluginName())
+	pluginPath := filepath.Join(common.ConfigDir, GetSsmPluginName())
 	info, err := os.Stat(pluginPath)
 
 	if os.IsNotExist(err) {
-		err = os.Mkdir(cache.CacheDir, 0700)
+		err = os.Mkdir(common.ConfigDir, 0700)
 		if err != nil {
 			return "", err
 		}

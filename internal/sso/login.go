@@ -3,7 +3,6 @@ package sso
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -19,8 +18,8 @@ import (
 )
 
 func (p *Login) LoadProfiles() {
-	awsProfiles, _ := cfaws.GetProfilesFromDefaultSharedConfig(context.TODO())
-	p.profiles = awsProfiles
+	awsProfiles, _ := cfaws.LoadProfiles()
+	p.profiles = *awsProfiles
 }
 
 func (p *Login) Execute(args []string) error {
@@ -76,19 +75,16 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 	p.LoadProfiles()
 
 	var creds aws.Credentials
-	var profile *cfaws.CFSharedConfig
-	var ok bool
 
-	if profile, ok = p.profiles[p.Profile]; !ok {
-		return nil, errors.New(fmt.Sprintf("profile %s not found!", p.Profile))
+	profile, err := p.GetProfile(p.Profile)
+	if err != nil {
+		return nil, err
 	}
 
 	// if profile == nil {...
 	// prompt for profile using fzf
 
-	err := credstore.Retrieve(profile.Name, &creds)
-
-	if err == nil {
+	if credstore.Retrieve(profile.Name, &creds) == nil {
 		// return cached credentials
 
 		// check if credentials are expired
@@ -144,7 +140,10 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 }
 
 func (p *Login) AssumeRoleWithCreds(ctx context.Context, parentcreds *aws.Credentials) (aws.Credentials, error) {
-	profile := p.profiles[p.Profile]
+	profile, err := p.GetProfile(p.Profile)
+	if err != nil {
+		return aws.Credentials{}, err
+	}
 
 	cfg, _ := NewAwsConfig(ctx, parentcreds)
 
@@ -171,10 +170,12 @@ func (p *Login) LoginMFA(ctx context.Context) (aws.Credentials, error) {
 	// Here we want to just login and get a session token for the user without assuming a role
 
 	p.LoadProfiles()
-	profile := p.profiles[p.Profile]
+	profile, err := p.GetProfile(p.Profile)
+	if err != nil {
+		return aws.Credentials{}, err
+	}
 
 	var creds aws.Credentials
-	var err error
 
 	if len(profile.AWSConfig.SourceProfileName) > 0 {
 		// check if we have cached credentials for source profile

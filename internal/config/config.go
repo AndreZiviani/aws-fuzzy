@@ -119,6 +119,7 @@ func (p *Config) QueryConfig(ctx context.Context, subservice string) ([]string, 
 		&awsconfig.SelectAggregateResourceConfigInput{
 			ConfigurationAggregatorName: aggregators[0].ConfigurationAggregatorName,
 			Expression:                  aws.String(query),
+			MaxResults:                  100,
 		},
 	)
 	if err != nil {

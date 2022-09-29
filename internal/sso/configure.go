@@ -107,12 +107,12 @@ func (p *Configure) ConfigureProfiles(ctx context.Context) error {
 
 	// Authenticate
 	cfg, err := NewAwsConfig(ctx, nil)
-	tmp := cfaws.CFSharedConfig{
+	tmp := cfaws.Profile{
 		Name:      "dummy",
 		AWSConfig: config.SharedConfig{SSOStartURL: startURL, Region: region, SSOAccountID: "000000000000", SSORoleName: "dummy"},
 	}
 
-	ssocreds, err := cfaws.SSODeviceCodeFlow(ctx, cfg, &tmp)
+	ssocreds, err := cfaws.SSODeviceCodeFlowFromStartUrl(ctx, cfg, startURL)
 	if err != nil {
 		return err
 	}

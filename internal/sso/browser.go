@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
-	"github.com/common-fate/granted/pkg/browsers"
+	gbrowser "github.com/common-fate/granted/pkg/browser"
 	"github.com/common-fate/granted/pkg/debug"
 	opentracing "github.com/opentracing/opentracing-go"
 )
@@ -32,12 +32,12 @@ func (p *Browser) Execute(args []string) error {
 	browser := p.Browser
 
 	if browser == "" {
-		browser, err = browsers.HandleManualBrowserSelection()
+		browser, err = gbrowser.HandleManualBrowserSelection()
 		if err != nil {
 			return err
 		}
 	}
 
-	return browsers.ConfigureBrowserSelection(browser, "")
+	return gbrowser.ConfigureBrowserSelection(browser, "")
 
 }
