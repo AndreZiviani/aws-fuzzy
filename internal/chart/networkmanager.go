@@ -48,10 +48,11 @@ func mapRegistrations(tgs []*vpc.DescribeTGRegistrationsOutput) *opts.TreeData {
 				account = *attachment.ResourceOwnerId
 			}
 
-			name := fmt.Sprintf("%s\n%s\n%s",
+			name := fmt.Sprintf("%s\n%s\n%s\n%s",
 				common.GetEC2Tag(attachment.Tags, "Name", aws.ToString(attachment.TransitGatewayAttachmentId)),
 				account,
 				aws.ToString(attachment.ResourceId),
+				common.GetEC2Tag(attachment.Tags, "cidr", ""),
 			)
 
 			node := &opts.TreeData{

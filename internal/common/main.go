@@ -42,3 +42,17 @@ func GetEC2Tag(tags []ec2types.Tag, key string, missing string) string {
 	}
 	return missing
 }
+
+func SetEC2Tag(tags []ec2types.Tag, key string, value *string) []ec2types.Tag {
+	for _, tag := range tags {
+		if aws.ToString(tag.Key) == key {
+			tag.Key = value
+			return tags
+		}
+	}
+	newTags := append(tags, ec2types.Tag{
+		Key:   aws.String(key),
+		Value: value,
+	})
+	return newTags
+}
