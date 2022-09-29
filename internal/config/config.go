@@ -9,15 +9,12 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"time"
 
-	"github.com/AndreZiviani/aws-fuzzy/internal/cache"
 	"github.com/AndreZiviani/aws-fuzzy/internal/sso"
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	awsconfig "github.com/aws/aws-sdk-go-v2/service/configservice"
-	configtypes "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	opentracing "github.com/opentracing/opentracing-go"
 	//"github.com/opentracing/opentracing-go/log"
 )
@@ -46,8 +43,6 @@ func (p *Config) Print(slices []string) error {
 func (p *Config) QueryConfig(ctx context.Context, subservice string) ([]string, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "config")
 
-	cacheKey := fmt.Sprintf("%s-aggregators", p.Profile)
-
 	login := sso.Login{Profile: p.Profile}
 	creds, err := login.GetCredentials(ctx)
 	if err != nil {
@@ -61,40 +56,23 @@ func (p *Config) QueryConfig(ctx context.Context, subservice string) ([]string, 
 
 	configclient := awsconfig.NewFromConfig(cfg)
 
-	// Check if we have a cached result of available aggregators
-	c, _ := cache.New("config")
-	j, err := c.Fetch(cacheKey)
-
-	aggregators := []configtypes.ConfigurationAggregator{}
-	if err == nil {
-		// We have valid cached credentials
-		_ = json.Unmarshal([]byte(j), &aggregators)
-		if len(aggregators) == 0 {
-			c.Delete(cacheKey)
-			return nil, errors.New("could not find any aggregators")
-		}
-	} else {
-		// Searching for available aggregators
-		spanGetAggregators, tmpctx := opentracing.StartSpanFromContext(ctx, "configgetaggregators")
-		tmp, err := configclient.DescribeConfigurationAggregators(tmpctx,
-			&awsconfig.DescribeConfigurationAggregatorsInput{},
-		)
-		if err != nil {
-			fmt.Printf("failed to describe configuration aggregators, %s\n", err)
-			return nil, err
-		}
-
-		aggregators = tmp.ConfigurationAggregators
-
-		if len(aggregators) == 0 {
-			return nil, errors.New("could not find any aggregators")
-		}
-
-		tmpj, _ := json.Marshal(aggregators)
-		c.Save(cacheKey, string(tmpj), time.Duration(10)*time.Minute)
-
-		spanGetAggregators.Finish()
+	// Searching for available aggregators
+	spanGetAggregators, tmpctx := opentracing.StartSpanFromContext(ctx, "configgetaggregators")
+	tmp, err := configclient.DescribeConfigurationAggregators(tmpctx,
+		&awsconfig.DescribeConfigurationAggregatorsInput{},
+	)
+	if err != nil {
+		fmt.Printf("failed to describe configuration aggregators, %s\n", err)
+		return nil, err
 	}
+
+	aggregators := tmp.ConfigurationAggregators
+
+	if len(aggregators) == 0 {
+		return nil, errors.New("could not find any aggregators")
+	}
+
+	spanGetAggregators.Finish()
 
 	// Filter results to an account, if specified by the user
 	accountFilter := ""

@@ -2,13 +2,10 @@ package ssh
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
-	"time"
 
-	"github.com/AndreZiviani/aws-fuzzy/internal/cache"
 	"github.com/AndreZiviani/aws-fuzzy/internal/common"
 	"github.com/AndreZiviani/aws-fuzzy/internal/sso"
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
@@ -31,17 +28,6 @@ func (p *Ssh) GetInstances(ctx context.Context) (*ec2.DescribeInstancesOutput, e
 	span, ctx := opentracing.StartSpanFromContext(ctx, "sshgetinstances")
 	defer span.Finish()
 
-	c, _ := cache.New("ssh")
-	j, err := c.Fetch(p.Profile)
-
-	instances := &ec2.DescribeInstancesOutput{}
-	if err == nil {
-		// We have valid cached credentials
-		err = json.Unmarshal([]byte(j), &instances)
-
-		return instances, nil
-	}
-
 	login := sso.Login{Profile: p.Profile}
 
 	creds, err := login.GetCredentials(ctx)
@@ -57,7 +43,7 @@ func (p *Ssh) GetInstances(ctx context.Context) (*ec2.DescribeInstancesOutput, e
 	spanDescribeInstances, ctx := opentracing.StartSpanFromContext(ctx, "ec2describe")
 	ec2client := ec2.NewFromConfig(cfg)
 
-	instances, err = ec2client.DescribeInstances(ctx,
+	instances, err := ec2client.DescribeInstances(ctx,
 		&ec2.DescribeInstancesInput{
 			Filters: []ec2types.Filter{
 				{
@@ -77,8 +63,6 @@ func (p *Ssh) GetInstances(ctx context.Context) (*ec2.DescribeInstancesOutput, e
 	spanDescribeInstances.LogFields(
 		log.String("event", "describe instances"),
 	)
-	tmp, _ := json.Marshal(instances)
-	c.Save(p.Profile, string(tmp), time.Duration(10)*time.Minute)
 	spanDescribeInstances.Finish()
 
 	return instances, nil
