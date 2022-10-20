@@ -67,6 +67,7 @@ func (p *Console) OpenBrowser(ctx context.Context) error {
 	con := gconsole.AWS{
 		Profile: p.Profile,
 		Region:  region,
+		Service: p.Service,
 	}
 	session, err := con.URL(*credentials)
 	if err != nil {
