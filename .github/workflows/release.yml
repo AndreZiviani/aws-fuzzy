@@ -6,14 +6,8 @@ on:
 
 jobs:
   release:
-    # we need CGO on macos because of keychain integration
-    # easier to run everything in macos because goreleaser does not support multiple runs for the same release
-    runs-on: macos-latest
+    runs-on: self-hosted
     steps:
-      - name: Set Env Var
-        run: |
-          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
-
       - id: go-cache-paths
         run: |
           echo "::set-output name=go-build::$(go env GOCACHE)"
@@ -47,3 +41,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SDKROOT: ${{ env.SDKROOT }}
+          ZIGROOT: ${{ env.ZIGROOT }}

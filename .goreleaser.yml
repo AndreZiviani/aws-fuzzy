@@ -39,8 +39,23 @@ builds:
       - amd64
       - arm64
     main: ./cmd/aws-fuzzy/main.go
+    flags: -buildmode=pie
     ldflags:
-      - -X github.com/AndreZiviani/aws-fuzzy/internal/version.versionTag={{.Version}}
+      - -s -w -X github.com/AndreZiviani/aws-fuzzy/internal/version.versionTag={{.Version}}
+    overrides:
+      - goos: darwin
+        goarch: amd64
+        goamd64: v1
+        env:
+          - CGO_LDFLAGS=-mmacosx-version-min=10.14 --sysroot ${SDKROOT} -F/System/Library/Frameworks -L/usr/lib
+          - CC=${ZIGROOT}/zig cc -target x86_64-macos-gnu -isysroot ${SDKROOT} -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks
+          - CXX=${ZIGROOT}/zig c++ -target x86_64-macos-gnu -isysroot ${SDKROOT} -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks
+      - goos: darwin
+        goarch: arm64
+        env:
+          - CGO_LDFLAGS=-mmacosx-version-min=11.1 --sysroot ${SDKROOT} -F/System/Library/Frameworks -L/usr/lib
+          - CC=${ZIGROOT}/zig cc -target aarch64-macos-gnu -isysroot ${SDKROOT} -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks
+          - CXX=${ZIGROOT}/zig c++ -target aarch64-macos-gnu -isysroot ${SDKROOT} -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks
 archives:
   - format: binary
 checksum:
