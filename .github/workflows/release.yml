@@ -37,7 +37,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: |
-            /sdk
+            ./sdk
           key: macos-sdk-${{ steps.sdk-version.outputs.version }}
           restore-keys: |
             macos-sdk-
@@ -47,7 +47,7 @@ jobs:
         run: |
           curl -OsL https://github.com/phracker/MacOSX-SDKs/releases/download/${{ steps.sdk-version.outputs.version }}/MacOSX${{ steps.sdk-version.outputs.version }}.sdk.tar.xz
           tar xf MacOSX${{ steps.sdk-version.outputs.version }}.sdk.tar.xz
-          mv MacOSX${{ steps.sdk-version.outputs.version }}.sdk /sdk
+          mv MacOSX${{ steps.sdk-version.outputs.version }}.sdk ./sdk
 
       - name: Cache Go Modules
         uses: actions/cache@v3
