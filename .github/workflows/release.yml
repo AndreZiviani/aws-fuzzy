@@ -49,6 +49,7 @@ jobs:
           tar xf MacOSX${{ steps.sdk-version.outputs.version }}.sdk.tar.xz
           mv MacOSX${{ steps.sdk-version.outputs.version }}.sdk ../sdk
           rm MacOSX${{ steps.sdk-version.outputs.version }}.sdk.tar.xz
+          pwd
 
       - name: Cache Go Modules
         uses: actions/cache@v3
