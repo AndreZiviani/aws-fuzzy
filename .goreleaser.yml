@@ -47,15 +47,15 @@ builds:
         goarch: amd64
         goamd64: v1
         env:
-          - CGO_LDFLAGS=-mmacosx-version-min=10.14 --sysroot ${SDKROOT} -F/System/Library/Frameworks -L/usr/lib
-          - CC=${ZIGROOT}/zig cc -target x86_64-macos-gnu -isysroot ${SDKROOT} -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks
-          - CXX=${ZIGROOT}/zig c++ -target x86_64-macos-gnu -isysroot ${SDKROOT} -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks
+          - CGO_LDFLAGS=-mmacosx-version-min=10.14 --sysroot {{.Env.SDKROOT}} -F/System/Library/Frameworks -L/usr/lib
+          - CC={{.Env.ZIGROOT}}/zig cc -target x86_64-macos-gnu -isysroot {{.Env.SDKROOT}} -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks
+          - CXX={{.Env.ZIGROOT}}/zig c++ -target x86_64-macos-gnu -isysroot {{.Env.SDKROOT}} -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks
       - goos: darwin
         goarch: arm64
         env:
-          - CGO_LDFLAGS=-mmacosx-version-min=11.1 --sysroot ${SDKROOT} -F/System/Library/Frameworks -L/usr/lib
-          - CC=${ZIGROOT}/zig cc -target aarch64-macos-gnu -isysroot ${SDKROOT} -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks
-          - CXX=${ZIGROOT}/zig c++ -target aarch64-macos-gnu -isysroot ${SDKROOT} -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks
+          - CGO_LDFLAGS=-mmacosx-version-min=11.1 --sysroot {{.Env.SDKROOT}} -F/System/Library/Frameworks -L/usr/lib
+          - CC={{.Env.ZIGROOT}}/zig cc -target aarch64-macos-gnu -isysroot {{.Env.SDKROOT}} -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks
+          - CXX={{.Env.ZIGROOT}}/zig c++ -target aarch64-macos-gnu -isysroot {{.Env.SDKROOT}} -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks
 archives:
   - format: binary
 checksum:
