@@ -29,6 +29,10 @@ func (i Instance) PrintDetails() string {
 
 	fmt.Fprintf(output, "PrivateIp: %s\n", *i.PrivateIpAddress)
 
+	fmt.Fprintf(output, "PrivateName: %s\n", *i.PrivateDnsName)
+
+	fmt.Fprintf(output, "PublicName: %s\n", *i.PublicDnsName)
+
 	fmt.Fprintf(output, "Subnet: %s\n", *i.SubnetId)
 
 	fmt.Fprintf(output, "InstanceType: %s\n", i.InstanceType)
