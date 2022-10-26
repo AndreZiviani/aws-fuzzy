@@ -6,28 +6,50 @@ on:
 
 jobs:
   release:
-    # we need CGO on macos because of keychain integration
-    # easier to run everything in macos because goreleaser does not support multiple runs for the same release
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
-      - name: Set Env Var
-        run: |
-          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v1
+        with:
+          version: 0.9.1
 
       - id: go-cache-paths
         run: |
-          echo "::set-output name=go-build::$(go env GOCACHE)"
-          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+
+      - id: sdk-version
+        run: |
+          echo "version=$(curl -s https://api.github.com/repos/phracker/MacOSX-SDKs/releases/latest | jq -r .tag_name)" >> $GITHUB_OUTPUT
 
       - name: Checkout
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
 
-      - name: Set up Go
-        uses: actions/setup-go@v2
+      - name: Cache MacOS SDK
+        id: cache-sdk
+        uses: actions/cache@v3
         with:
-          go-version: 1.18
+          path: |
+            ../sdk
+          key: macos-sdk-${{ steps.sdk-version.outputs.version }}
+          restore-keys: |
+            macos-sdk-
+
+      - name: Download MacOS SDK
+        if: steps.cache-sdk.outputs.cache-hit != 'true'
+        run: |
+          curl -OsL https://github.com/phracker/MacOSX-SDKs/releases/download/${{ steps.sdk-version.outputs.version }}/MacOSX${{ steps.sdk-version.outputs.version }}.sdk.tar.xz
+          tar xf MacOSX${{ steps.sdk-version.outputs.version }}.sdk.tar.xz
+          mv MacOSX${{ steps.sdk-version.outputs.version }}.sdk ../sdk
+          rm MacOSX${{ steps.sdk-version.outputs.version }}.sdk.tar.xz
+          pwd
 
       - name: Cache Go Modules
         uses: actions/cache@v3
@@ -46,4 +68,3 @@ jobs:
           args: release --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SDKROOT: ${{ env.SDKROOT }}
