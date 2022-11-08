@@ -25,6 +25,7 @@ type AwsProfile struct {
 	Region            string `ini:"sso_region"`
 	AccountId         string `ini:"sso_account_id"`
 	Role              string `ini:"sso_role_name"`
+	CredentialProcess string `ini:"credential_process"`
 }
 
 func (p *Configure) GetAccountAccess(ctx context.Context, cfg aws.Config, credentials *cfaws.SSOToken, startURL string, region string) (map[string]AwsProfile, error) {
@@ -89,7 +90,8 @@ func (p *Configure) GetAccountAccess(ctx context.Context, cfg aws.Config, creden
 		}
 
 		profile := fmt.Sprintf("profile %s", tmp)
-		profiles[profile] = AwsProfile{startURL, region, *account.AccountId, role}
+		process := fmt.Sprintf("%s sso credential-process --profile %s", os.Args[0], tmp)
+		profiles[profile] = AwsProfile{startURL, region, *account.AccountId, role, process}
 	}
 
 	return profiles, err

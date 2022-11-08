@@ -31,11 +31,18 @@ type Configure struct {
 	Verbose bool `short:"v" long:"verbose" description:"Enable verbose messages"`
 }
 
+type CredentialProcess struct {
+	Profile string `short:"p" long:"profile" env:"AWS_PROFILE" default:"default" description:"What profile to use"`
+	MFATOTP string `short:"t" long:"token" description:"MFA TOTP if using IAM authentication with MFA"`
+	Verbose bool   `short:"v" long:"verbose" description:"Enable verbose messages"`
+}
+
 var (
-	login     Login
-	console   Console
-	browser   Browser
-	configure Configure
+	login             Login
+	console           Console
+	browser           Browser
+	configure         Configure
+	credentialProcess CredentialProcess
 )
 
 func Init(parser *flags.Parser) {
@@ -71,5 +78,10 @@ func Init(parser *flags.Parser) {
 		"Configure AWS SSO",
 		"Configure local profiles with AWS accounts available from SSO",
 		&configure)
+
+	cmd.AddCommand("credential-process",
+		"Integrate with native AWS CLI",
+		"Configure native AWS CLI to use aws-fuzzy to authenticate",
+		&credentialProcess)
 
 }
