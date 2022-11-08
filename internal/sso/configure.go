@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/AndreZiviani/aws-fuzzy/internal/common"
@@ -20,10 +21,10 @@ import (
 )
 
 type AwsProfile struct {
-	StartUrl  string `ini:"sso_start_url"`
-	Region    string `ini:"sso_region"`
-	AccountId string `ini:"sso_account_id"`
-	Role      string `ini:"sso_role_name"`
+	StartUrl          string `ini:"sso_start_url"`
+	Region            string `ini:"sso_region"`
+	AccountId         string `ini:"sso_account_id"`
+	Role              string `ini:"sso_role_name"`
 }
 
 func (p *Configure) GetAccountAccess(ctx context.Context, cfg aws.Config, credentials *cfaws.SSOToken, startURL string, region string) (map[string]AwsProfile, error) {
@@ -56,20 +57,23 @@ func (p *Configure) GetAccountAccess(ctx context.Context, cfg aws.Config, creden
 			return map[string]AwsProfile{}, err
 		}
 
-		role := roles.RoleList[0].RoleName
+		role := aws.ToString(roles.RoleList[0].RoleName)
 		reader := bufio.NewReader(os.Stdin)
 
 		if len(roles.RoleList) > 1 {
 			fmt.Printf("Found %d roles for account %s:\n", len(roles.RoleList), *account.AccountName)
+			sort.Slice(roles.RoleList, func(i, j int) bool {
+				return strings.ToLower(aws.ToString(roles.RoleList[i].RoleName)) < strings.ToLower(aws.ToString(roles.RoleList[j].RoleName))
+			})
 			for _, v := range roles.RoleList {
-				fmt.Println(v)
+				fmt.Println(aws.ToString(v.RoleName))
 			}
 
-			fmt.Printf("Which one do you want? (default: %s) ", roles.RoleList[0].RoleName)
+			fmt.Printf("Which one do you want? (default: %s) ", aws.ToString(roles.RoleList[0].RoleName))
 			text, _ := reader.ReadString('\n')
 
-			if len(text) != 0 {
-				*role = text
+			if text != "\n" {
+				role = text
 			}
 
 			// TODO: check for typo in role name?
@@ -85,7 +89,7 @@ func (p *Configure) GetAccountAccess(ctx context.Context, cfg aws.Config, creden
 		}
 
 		profile := fmt.Sprintf("profile %s", tmp)
-		profiles[profile] = AwsProfile{startURL, region, *account.AccountId, *role}
+		profiles[profile] = AwsProfile{startURL, region, *account.AccountId, role}
 	}
 
 	return profiles, err
