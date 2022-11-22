@@ -9,7 +9,16 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/common-fate/granted/pkg/cfaws"
+	"github.com/common-fate/granted/pkg/securestorage"
 )
+
+func NewSecureSSOTokenStorage() securestorage.SSOTokensSecureStorage {
+	return securestorage.SSOTokensSecureStorage{
+		SecureStorage: securestorage.SecureStorage{
+			StorageSuffix: "aws-fuzzy",
+		},
+	}
+}
 
 func NewAwsConfig(ctx context.Context, creds *aws.Credentials, opts ...func(*config.LoadOptions) error) (aws.Config, error) {
 	cfg, err := config.LoadDefaultConfig(ctx, opts...)

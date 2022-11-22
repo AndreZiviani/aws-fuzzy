@@ -12,29 +12,37 @@ import (
 	"github.com/AndreZiviani/aws-fuzzy/internal/common"
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/common-fate/granted/pkg/cfaws"
-	"github.com/common-fate/granted/pkg/debug"
 	opentracing "github.com/opentracing/opentracing-go"
 	"gopkg.in/ini.v1"
 )
 
 type AwsProfile struct {
-	StartUrl          string `ini:"sso_start_url"`
-	Region            string `ini:"sso_region"`
-	AccountId         string `ini:"sso_account_id"`
-	Role              string `ini:"sso_role_name"`
+	StartUrl          string `ini:"granted_sso_start_url"`
+	Region            string `ini:"granted_sso_region"`
+	AccountId         string `ini:"granted_sso_account_id"`
+	Role              string `ini:"granted_sso_role_name"`
 	CredentialProcess string `ini:"credential_process"`
 }
 
-func (p *Configure) GetAccountAccess(ctx context.Context, cfg aws.Config, credentials *cfaws.SSOToken, startURL string, region string) (map[string]AwsProfile, error) {
+func (p *Configure) GetAccountAccess(ctx context.Context, startURL string, region string) (map[string]AwsProfile, error) {
+	cfg, err := NewAwsConfig(ctx, nil)
 	ssoclient := sso.NewFromConfig(cfg)
+
+	secureSSOTokenStorage := NewSecureSSOTokenStorage()
+	ssoToken := secureSSOTokenStorage.GetValidSSOToken(startURL)
+	if ssoToken == nil {
+		ssoToken, err = cfaws.SSODeviceCodeFlowFromStartUrl(ctx, cfg, startURL)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	// List available account
 	accounts, err := ssoclient.ListAccounts(ctx,
 		&sso.ListAccountsInput{
-			AccessToken: &credentials.AccessToken,
+			AccessToken: &ssoToken.AccessToken,
 			MaxResults:  aws.Int32(100),
 		},
 	)
@@ -48,7 +56,7 @@ func (p *Configure) GetAccountAccess(ctx context.Context, cfg aws.Config, creden
 		// List Available roles in each account
 		roles, err := ssoclient.ListAccountRoles(ctx,
 			&sso.ListAccountRolesInput{
-				AccessToken: &credentials.AccessToken,
+				AccessToken: &ssoToken.AccessToken,
 				AccountId:   account.AccountId,
 				MaxResults:  aws.Int32(100),
 			},
@@ -111,21 +119,7 @@ func (p *Configure) ConfigureProfiles(ctx context.Context) error {
 	region, _ := reader.ReadString('\n')
 	region = strings.Replace(region, "\n", "", -1)
 
-	// Authenticate
-	cfg, err := NewAwsConfig(ctx, nil)
-	tmp := cfaws.Profile{
-		Name:      "dummy",
-		AWSConfig: config.SharedConfig{SSOStartURL: startURL, Region: region, SSOAccountID: "000000000000", SSORoleName: "dummy"},
-	}
-
-	ssocreds, err := cfaws.SSODeviceCodeFlowFromStartUrl(ctx, cfg, startURL)
-	if err != nil {
-		return err
-	}
-
-	cfaws.StoreSSOToken(tmp.AWSConfig.SSOStartURL, *ssocreds)
-
-	profiles, err := p.GetAccountAccess(ctx, cfg, ssocreds, startURL, region)
+	profiles, err := p.GetAccountAccess(ctx, startURL, region)
 
 	// Save complete profile config
 	err = WriteSsoProfiles(profiles)
@@ -214,11 +208,6 @@ func (p *Configure) Execute(args []string) error {
 	tracer := opentracing.GlobalTracer()
 	spanSso, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssoconfigure")
 	defer spanSso.Finish()
-
-	if p.Verbose {
-		// enable granted debug
-		debug.CliVerbosity = debug.VerbosityDebug
-	}
 
 	return p.ConfigureProfiles(ctx)
 }

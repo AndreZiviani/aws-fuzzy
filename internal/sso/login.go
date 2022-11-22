@@ -12,8 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/common-fate/granted/pkg/cfaws"
-	"github.com/common-fate/granted/pkg/credstore"
-	"github.com/common-fate/granted/pkg/debug"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
@@ -35,11 +33,6 @@ func (p *Login) Execute(args []string) error {
 	tracer := opentracing.GlobalTracer()
 	spanSso, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssologincmd")
 	defer spanSso.Finish()
-
-	if p.Verbose {
-		// enable granted debug
-		debug.CliVerbosity = debug.VerbosityDebug
-	}
 
 	creds, err := p.GetCredentials(ctx)
 	if err != nil {
@@ -84,7 +77,9 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 	// if profile == nil {...
 	// prompt for profile using fzf
 
-	if credstore.Retrieve(profile.Name, &creds) == nil {
+	credstore := NewSecureSSOTokenStorage()
+
+	if credstore.SecureStorage.Retrieve(profile.Name, &creds) == nil {
 		// return cached credentials
 
 		// check if credentials are expired
@@ -92,7 +87,7 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 			return &creds, nil
 		}
 
-		credstore.Clear(profile.Name)
+		credstore.SecureStorage.Clear(profile.Name)
 
 		return p.GetCredentials(ctx)
 	}
@@ -101,7 +96,7 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 
 	if len(profile.Parents) > 0 {
 		// this profile uses a parent profile, check if we have cached credentials for that
-		err := credstore.Retrieve(profile.Parents[0].Name, &creds)
+		err := credstore.SecureStorage.Retrieve(profile.Parents[0].Name, &creds)
 		if err == nil {
 			// yes we have
 			creds, err = p.AssumeRoleWithCreds(ctx, &creds)
@@ -133,7 +128,7 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 	}
 
 	// cache credentials
-	credstore.Store(profile.Name, creds)
+	credstore.SecureStorage.Store(profile.Name, creds)
 
 	return &creds, nil
 
@@ -160,7 +155,8 @@ func (p *Login) AssumeRoleWithCreds(ctx context.Context, parentcreds *aws.Creden
 	}
 
 	creds := cfaws.TypeCredsToAwsCreds(*session.Credentials)
-	credstore.Store(profile.Name, creds)
+	credstore := NewSecureSSOTokenStorage()
+	credstore.SecureStorage.Store(profile.Name, creds)
 
 	return creds, err
 
@@ -179,7 +175,8 @@ func (p *Login) LoginMFA(ctx context.Context) (aws.Credentials, error) {
 
 	if len(profile.AWSConfig.SourceProfileName) > 0 {
 		// check if we have cached credentials for source profile
-		credstore.Retrieve(profile.AWSConfig.SourceProfileName, &creds)
+		credstore := NewSecureSSOTokenStorage()
+		credstore.SecureStorage.Retrieve(profile.AWSConfig.SourceProfileName, &creds)
 	}
 
 	cfg, _ := NewAwsConfig(ctx, &profile.AWSConfig.Credentials)
