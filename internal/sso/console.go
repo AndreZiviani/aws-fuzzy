@@ -13,7 +13,6 @@ import (
 	gbrowser "github.com/common-fate/granted/pkg/browser"
 	"github.com/common-fate/granted/pkg/config"
 	gconsole "github.com/common-fate/granted/pkg/console"
-	"github.com/common-fate/granted/pkg/debug"
 	"github.com/common-fate/granted/pkg/forkprocess"
 	glauncher "github.com/common-fate/granted/pkg/launcher"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -32,11 +31,6 @@ func (p *Console) Execute(args []string) error {
 	tracer := opentracing.GlobalTracer()
 	spanSso, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssoconsolecmd")
 	defer spanSso.Finish()
-
-	if p.Verbose {
-		// enable granted debug
-		debug.CliVerbosity = debug.VerbosityDebug
-	}
 
 	p.OpenBrowser(ctx)
 

@@ -6,7 +6,6 @@ import (
 
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	gbrowser "github.com/common-fate/granted/pkg/browser"
-	"github.com/common-fate/granted/pkg/debug"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
@@ -23,11 +22,6 @@ func (p *Browser) Execute(args []string) error {
 	tracer := opentracing.GlobalTracer()
 	spanSso, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssobrowsercmd")
 	defer spanSso.Finish()
-
-	if p.Verbose {
-		// enable granted debug
-		debug.CliVerbosity = debug.VerbosityDebug
-	}
 
 	browser := p.Browser
 
