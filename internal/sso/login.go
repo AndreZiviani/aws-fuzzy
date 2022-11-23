@@ -10,6 +10,7 @@ import (
 
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/common-fate/granted/pkg/cfaws"
 	"github.com/common-fate/granted/pkg/credstore"
@@ -46,7 +47,9 @@ func (p *Login) Execute(args []string) error {
 		return err
 	}
 
-	p.PrintCredentials(creds)
+	if !p.Url {
+		p.PrintCredentials(creds)
+	}
 
 	return err
 }
@@ -84,7 +87,13 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 	// if profile == nil {...
 	// prompt for profile using fzf
 
-	if credstore.Retrieve(profile.Name, &creds) == nil {
+	if p.Url {
+		err := p.oidcUrl(ctx)
+		return &aws.Credentials{}, err
+	}
+	if p.NoCache {
+		credstore.Clear(profile.Name)
+	} else if credstore.Retrieve(profile.Name, &creds) == nil {
 		// return cached credentials
 
 		// check if credentials are expired
@@ -240,4 +249,37 @@ func (p *Login) checkExpiredCreds(ctx context.Context) {
 		os.Unsetenv("AWS_SESSION_TOKEN")
 		os.Unsetenv("AWS_ACCESS_KEY_ID")
 	}
+}
+
+func (p *Login) oidcUrl(ctx context.Context) error {
+	cfg, _ := NewAwsConfig(ctx, nil)
+	ssooidcClient := ssooidc.NewFromConfig(cfg)
+	register, err := ssooidcClient.RegisterClient(ctx, &ssooidc.RegisterClientInput{
+		ClientName: aws.String("granted-cli-client"),
+		ClientType: aws.String("public"),
+		Scopes:     []string{"sso-portal:*"},
+	})
+	if err != nil {
+		return err
+	}
+
+	p.LoadProfiles()
+	profile, err := p.GetProfile(p.Profile)
+	if err != nil {
+		return err
+	}
+
+	// authorize your device using the client registration response
+	deviceAuth, err := ssooidcClient.StartDeviceAuthorization(ctx, &ssooidc.StartDeviceAuthorizationInput{
+
+		ClientId:     register.ClientId,
+		ClientSecret: register.ClientSecret,
+		StartUrl:     aws.String(profile.AWSConfig.SSOStartURL),
+	})
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(aws.ToString(deviceAuth.VerificationUriComplete))
+	return nil
 }

@@ -11,6 +11,8 @@ type Login struct {
 	Ask      bool   `long:"ask" env:"AWSFUZZY_ASK" description:"Ask before continuing"`
 	MFATOTP  string `short:"t" long:"token" description:"MFA TOTP if using IAM authentication with MFA"`
 	Verbose  bool   `short:"v" long:"verbose" description:"Enable verbose messages"`
+	Url      bool   `short:"u" long:"url" description:"Only print login url"`
+	NoCache  bool   `short:"n" long:"no-cache" description:"Dont use cached credentials"`
 	profiles cfaws.Profiles
 }
 
