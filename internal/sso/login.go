@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/common-fate/granted/pkg/cfaws"
+	"github.com/common-fate/granted/pkg/securestorage"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
@@ -41,9 +42,7 @@ func (p *Login) Execute(args []string) error {
 		return err
 	}
 
-	if !p.Url {
-		p.PrintCredentials(creds)
-	}
+	p.PrintCredentials(creds)
 
 	return err
 }
@@ -85,8 +84,11 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 
 	if p.Url {
 		err := p.oidcUrl(ctx)
-		return &aws.Credentials{}, err
+		if err != nil {
+			return &aws.Credentials{}, err
+		}
 	}
+
 	if p.NoCache {
 		credstore.SecureStorage.Clear(profile.Name)
 	} else if credstore.SecureStorage.Retrieve(profile.Name, &creds) == nil {
@@ -279,5 +281,17 @@ func (p *Login) oidcUrl(ctx context.Context) error {
 	}
 
 	fmt.Println(aws.ToString(deviceAuth.VerificationUriComplete))
+	token, err := cfaws.PollToken(ctx, ssooidcClient, *register.ClientSecret, *register.ClientId, *deviceAuth.DeviceCode, cfaws.PollingConfig{CheckInterval: time.Second * 2, TimeoutAfter: time.Minute * 2})
+	if err != nil {
+		return err
+	}
+
+	newSSOToken := securestorage.SSOToken{AccessToken: *token.AccessToken, Expiry: time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)}
+
+	secureSSOTokenStorage := securestorage.NewSecureSSOTokenStorage()
+
+	ssoTokenKey := profile.AWSConfig.SSOStartURL
+	secureSSOTokenStorage.StoreSSOToken(ssoTokenKey, newSSOToken)
+
 	return nil
 }
