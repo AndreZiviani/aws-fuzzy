@@ -10,6 +10,7 @@ import (
 
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/common-fate/granted/pkg/cfaws"
@@ -249,19 +250,19 @@ func (p *Login) checkExpiredCreds(ctx context.Context) {
 }
 
 func (p *Login) oidcUrl(ctx context.Context) error {
-	cfg, _ := NewAwsConfig(ctx, nil)
+	p.LoadProfiles()
+	profile, err := p.GetProfile(p.Profile)
+	if err != nil {
+		return err
+	}
+
+	cfg, _ := NewAwsConfig(ctx, nil, config.WithRegion(profile.AWSConfig.SSORegion))
 	ssooidcClient := ssooidc.NewFromConfig(cfg)
 	register, err := ssooidcClient.RegisterClient(ctx, &ssooidc.RegisterClientInput{
 		ClientName: aws.String("granted-cli-client"),
 		ClientType: aws.String("public"),
 		Scopes:     []string{"sso-portal:*"},
 	})
-	if err != nil {
-		return err
-	}
-
-	p.LoadProfiles()
-	profile, err := p.GetProfile(p.Profile)
 	if err != nil {
 		return err
 	}
