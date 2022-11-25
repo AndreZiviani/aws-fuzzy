@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AndreZiviani/aws-fuzzy/internal/securestorage"
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/common-fate/granted/pkg/cfaws"
-	"github.com/common-fate/granted/pkg/securestorage"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 

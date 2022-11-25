@@ -3,6 +3,8 @@ module github.com/AndreZiviani/aws-fuzzy
 go 1.18
 
 require (
+	github.com/99designs/keyring v1.2.1
+	github.com/AlecAivazis/survey/v2 v2.3.6
 	github.com/AndreZiviani/fzf-wrapper/v2 v2.0.0-20220531134234-4dd6b5a9c480
 	github.com/BurntSushi/toml v1.2.1
 	github.com/aws/aws-sdk-go-v2 v1.17.1
@@ -14,13 +16,16 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/resourceexplorer2 v1.0.1
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.33.0
 	github.com/aws/aws-sdk-go-v2/service/sso v1.11.25
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.13.8
 	github.com/aws/aws-sdk-go-v2/service/sts v1.17.4
+	github.com/common-fate/clio v1.1.0
 	github.com/common-fate/granted v0.5.0
 	github.com/gdamore/tcell/v2 v2.5.3
 	github.com/gjbae1212/go-wraperror v0.7.0
 	github.com/go-echarts/go-echarts/v2 v2.2.4
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/opentracing/opentracing-go v1.2.0
+	github.com/pkg/errors v0.9.1
 	github.com/rivo/tview v0.0.0-20221117065207-09f052e6ca98
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/uber/jaeger-lib v2.4.1+incompatible
@@ -29,19 +34,15 @@ require (
 
 require (
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
-	github.com/99designs/keyring v1.2.1 // indirect
-	github.com/AlecAivazis/survey/v2 v2.3.6 // indirect
 	github.com/HdrHistogram/hdrhistogram-go v1.0.1 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.19 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.25 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.19 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.26 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.19 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.13.8 // indirect
 	github.com/aws/smithy-go v1.13.4 // indirect
 	github.com/bigkevmcd/go-configparser v0.0.0-20221013105652-718c0b41a604 // indirect
 	github.com/common-fate/cf-protos v0.0.0-20220401154300-ca50a01c2dba // indirect
-	github.com/common-fate/clio v1.1.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/danieljoos/wincred v1.1.2 // indirect
 	github.com/dvsekhvalnov/jose2go v1.5.0 // indirect
@@ -63,7 +64,6 @@ require (
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/mtibben/percent v0.2.1 // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.4.3 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/saracen/walker v0.1.3 // indirect
@@ -88,5 +88,7 @@ require (
 //replace github.com/go-echarts/go-echarts/v2 => ../go-echarts
 
 replace github.com/go-echarts/go-echarts/v2 => github.com/AndreZiviani/go-echarts/v2 v2.2.17
+
+//replace github.com/common-fate/granted => ../granted-fork
 
 //replace github.com/AndreZiviani/fzf-wrapper/v2 => /home/andre/git/fzf-wrapper

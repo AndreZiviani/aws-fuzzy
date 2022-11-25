@@ -7,10 +7,6 @@ import (
 	"os"
 )
 
-var (
-	UserHomeDir, _ = os.UserHomeDir()
-)
-
 // exists returns whether the given file or directory exists
 func exists(path string) (bool, error) {
 	_, err := os.Stat(path)

@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/AndreZiviani/aws-fuzzy/internal/common"
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sso"
@@ -155,7 +154,8 @@ func CopyFile(src, dst string) error {
 }
 
 func WriteSsoProfiles(profiles map[string]AwsProfile) error {
-	configDir := fmt.Sprintf("%s/.aws", common.UserHomeDir)
+	homeDir, _ := os.UserHomeDir()
+	configDir := fmt.Sprintf("%s/.aws", homeDir)
 	configPath := fmt.Sprintf("%s/config", configDir)
 
 	if _, err := os.Stat(configPath); err == nil {

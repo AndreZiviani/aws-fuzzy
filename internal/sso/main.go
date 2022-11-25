@@ -1,8 +1,8 @@
 package sso
 
 import (
+	"github.com/AndreZiviani/aws-fuzzy/internal/afconfig"
 	"github.com/common-fate/granted/pkg/cfaws"
-	grantedconfig "github.com/common-fate/granted/pkg/config"
 	flags "github.com/jessevdk/go-flags"
 )
 
@@ -48,7 +48,8 @@ var (
 )
 
 func Init(parser *flags.Parser) {
-	grantedconfig.SetupConfigFolder()
+	config := afconfig.NewDefaultConfig()
+	config.SetupConfigFolder()
 
 	cmd, err := parser.AddCommand(
 		"sso",

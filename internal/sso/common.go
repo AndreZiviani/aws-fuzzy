@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/AndreZiviani/aws-fuzzy/internal/securestorage"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/common-fate/granted/pkg/cfaws"
-	"github.com/common-fate/granted/pkg/securestorage"
 )
 
 func NewSecureSSOTokenStorage() securestorage.SSOTokensSecureStorage {

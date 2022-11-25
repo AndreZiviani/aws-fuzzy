@@ -12,7 +12,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/AndreZiviani/aws-fuzzy/internal/common"
+	"github.com/AndreZiviani/aws-fuzzy/internal/afconfig"
 	wraperror "github.com/gjbae1212/go-wraperror"
 )
 
@@ -54,11 +54,13 @@ func ExtractAssets() (string, error) {
 		return "", err
 	}
 
-	pluginPath := filepath.Join(common.ConfigDir, GetSsmPluginName())
+	cfg := afconfig.NewDefaultConfig()
+	configDir, _ := cfg.ConfigFolder()
+	pluginPath := filepath.Join(configDir, GetSsmPluginName())
 	info, err := os.Stat(pluginPath)
 
 	if os.IsNotExist(err) {
-		err = os.Mkdir(common.ConfigDir, 0700)
+		err = os.Mkdir(configDir, 0700)
 		if err != nil {
 			return "", err
 		}
