@@ -1,15 +1,13 @@
-package cfaws
+package awsprofile
 
 import (
 	"context"
-	"net/http"
 	"os/exec"
 	"time"
 
 	"github.com/AndreZiviani/aws-fuzzy/internal/afconfig"
 	"github.com/AndreZiviani/aws-fuzzy/internal/securestorage"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/sso"
@@ -17,7 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
 	ssooidctypes "github.com/aws/aws-sdk-go-v2/service/ssooidc/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	"github.com/aws/smithy-go"
 	"github.com/common-fate/clio"
 	"github.com/hako/durafmt"
 	"github.com/pkg/browser"
@@ -56,19 +53,21 @@ func (c *Profile) SSOLogin(ctx context.Context, configOpts ConfigOpts) (aws.Cred
 		requiresAssuming = true
 	}
 
-	var startURL string
+	var startURL, ssoTokenKey string
 	cfg := aws.NewConfig()
 
 	if c.AWSConfig.SSOSession != nil {
 		startURL = c.AWSConfig.SSOSession.SSOStartURL
+		ssoTokenKey = c.AWSConfig.SSOSession.Name
 		cfg.Region = c.AWSConfig.SSOSession.SSORegion
 	} else {
 		startURL = rootProfile.AWSConfig.SSOStartURL
+		ssoTokenKey = startURL
 		cfg.Region = rootProfile.AWSConfig.SSORegion
 	}
 
 	secureSSOTokenStorage := securestorage.NewSecureSSOTokenStorage()
-	cachedToken := secureSSOTokenStorage.GetValidSSOToken(startURL)
+	cachedToken := secureSSOTokenStorage.GetValidSSOToken(ssoTokenKey)
 	var accessToken *string
 	if cachedToken == nil {
 		newSSOToken, err := SSODeviceCodeFlowFromStartUrl(ctx, *cfg, startURL)
@@ -173,7 +172,8 @@ func SSODeviceCodeFlowFromStartUrl(ctx context.Context, cfg aws.Config, startUrl
 	clio.Info(url)
 
 	//check if sso browser path is set
-	config, err := af - config.Load()
+	config := afconfig.NewDefaultConfig()
+	config.Load()
 	if err != nil {
 		return nil, err
 	}

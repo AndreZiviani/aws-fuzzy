@@ -15,7 +15,7 @@ func NewSecureSSOTokenStorage() SSOTokensSecureStorage {
 	return SSOTokensSecureStorage{
 		SecureStorage: SecureStorage{
 			StoragePrefix: "aws-fuzzy",
-			StorageSuffix: "aws-sso-tokens",
+			StorageSuffix: "-sso-tokens",
 		},
 	}
 }

@@ -1,4 +1,4 @@
-package cfaws
+package awsprofile
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/AndreZiviani/aws-fuzzy/internal/afconfig"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials/ssocreds"
@@ -38,6 +39,19 @@ type Profile struct {
 	Initialised                    bool
 	LoadingError                   error
 	HasSecureStorageIAMCredentials bool
+	CustomDescriptionKey           string
+}
+
+type Session struct {
+	// allows access to the raw values from the file
+	RawConfig *ini.Section
+	Name      string
+	// the file that this profile is from
+	File string
+
+	AWSConfig    config.SSOSession
+	Initialised  bool
+	LoadingError error
 }
 
 var ErrProfileNotInitialised error = errors.New("profile not initialised")
@@ -47,7 +61,9 @@ var ErrProfileNotFound error = errors.New("profile not found")
 type Profiles struct {
 	// alphabetically sorted after first load
 	ProfileNames []string
+	SessionNames []string
 	profiles     map[string]*Profile
+	sessions     map[string]*Session
 }
 
 func (p *Profiles) HasProfile(profile string) bool {
@@ -71,7 +87,7 @@ func (p *Profiles) Profile(profile string) (*Profile, error) {
 }
 
 func LoadProfiles() (*Profiles, error) {
-	p := Profiles{profiles: make(map[string]*Profile)}
+	p := Profiles{profiles: make(map[string]*Profile), sessions: make(map[string]*Session)}
 	err := p.loadDefaultConfigFile()
 	if err != nil {
 		return nil, err
@@ -81,6 +97,7 @@ func LoadProfiles() (*Profiles, error) {
 		return nil, err
 	}
 	sort.Strings(p.ProfileNames)
+	sort.Strings(p.SessionNames)
 	return &p, nil
 }
 
@@ -115,6 +132,12 @@ func (p *Profiles) loadDefaultConfigFile() error {
 				p.ProfileNames = append(p.ProfileNames, name)
 				sectionPtr := section
 				p.profiles[name] = &Profile{RawConfig: sectionPtr, Name: name, File: configPath}
+			}
+			if (strings.HasPrefix(section.Name(), "sso-session ") && len(section.Name()) > 12) && IsLegalProfileName(strings.TrimPrefix(section.Name(), "sso-session ")) {
+				name := strings.TrimPrefix(section.Name(), "sso-session ")
+				p.SessionNames = append(p.SessionNames, name)
+				sectionPtr := section
+				p.sessions[name] = &Session{RawConfig: sectionPtr, Name: name, File: configPath}
 			}
 		}
 
@@ -185,6 +208,11 @@ func (p *Profiles) InitialiseProfilesTree(ctx context.Context) {
 	for _, v := range p.profiles {
 		_ = v.init(ctx, p, 0)
 	}
+	/*
+		for _, v := range p.sessions {
+			_ = v.init(ctx, p, 0)
+		}
+	*/
 }
 
 // LoadInitialisedProfile returns an initialised profile by name
@@ -198,7 +226,7 @@ func (p *Profiles) LoadInitialisedProfile(ctx context.Context, profile string) (
 	// For config that has a custom prefix we need to convert this to AWS config fields
 	// aws configuration
 	if hasCustomSSOPrefix(pr.RawConfig) {
-		awsConfig, err := ParseCustomSSOProfile(ctx, pr)
+		awsConfig, err := p.ParseCustomSSOProfile(ctx, pr)
 		if err != nil {
 			return nil, err
 		}
@@ -315,10 +343,33 @@ func (p *Profile) init(ctx context.Context, profiles *Profiles, depth int) error
 					return p.LoadingError
 				}
 			}
+
 		} else {
 			p.LoadingError = fmt.Errorf("maximum source profile depth exceeded for profile %s\nthis indicates that you have a cyclic reference in your aws profiles.[profile dev]\nregion = ap-southeast-2\nsource_profile = prod\n\n[profile prod]\nregion = ap-southeast-2\nsource_profile = dev", p.Name)
 			return p.LoadingError
 		}
+	}
+	return nil
+}
+
+func (s *Session) init(ctx context.Context) error {
+	if !s.Initialised {
+		s.Initialised = true
+
+		afcfg := afconfig.NewDefaultConfig()
+
+		s.AWSConfig.Name = s.Name
+
+		item, err := s.RawConfig.GetKey(afcfg.AppNameConfig + "_sso_region")
+		if err != nil {
+			return err
+		}
+		s.AWSConfig.SSORegion = item.Value()
+		item, err = s.RawConfig.GetKey(afcfg.AppNameConfig + "_sso_start_url")
+		if err != nil {
+			return err
+		}
+		s.AWSConfig.SSOStartURL = item.Value()
 	}
 	return nil
 }

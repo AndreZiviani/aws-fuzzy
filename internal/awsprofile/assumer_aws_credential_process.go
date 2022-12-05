@@ -1,4 +1,4 @@
-package cfaws
+package awsprofile
 
 import (
 	"context"

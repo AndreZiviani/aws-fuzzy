@@ -11,6 +11,7 @@ import (
 
 type Config struct {
 	AppName        string
+	AppNameConfig  string
 	DefaultBrowser string
 	// used to override the builtin filepaths for custom installation locations
 	CustomBrowserPath      string
@@ -29,7 +30,7 @@ type KeyringConfig struct {
 
 // NewDefaultConfig returns a config with OS specific defaults populated
 func NewDefaultConfig() Config {
-	cfg := Config{AppName: "aws-fuzzy"}
+	cfg := Config{AppName: "aws-fuzzy", AppNameConfig: "aws_fuzzy"}
 
 	// macos devices should default to the keychain backend
 	if runtime.GOOS == "darwin" {

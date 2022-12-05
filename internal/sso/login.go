@@ -8,18 +8,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AndreZiviani/aws-fuzzy/internal/awsprofile"
 	"github.com/AndreZiviani/aws-fuzzy/internal/securestorage"
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	"github.com/common-fate/granted/pkg/cfaws"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
 func (p *Login) LoadProfiles() {
-	awsProfiles, _ := cfaws.LoadProfiles()
+	awsProfiles, _ := awsprofile.LoadProfiles()
 	p.profiles = *awsProfiles
 }
 
@@ -71,16 +71,41 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 	p.LoadProfiles()
 
 	var creds aws.Credentials
+	var ssoTokenKey, startURL string
+	//var accessToken *string
 
 	profile, err := p.GetProfile(p.Profile)
 	if err != nil {
 		return nil, err
 	}
 
+	if profile.AWSConfig.SSOSession != nil {
+		ssoTokenKey = profile.AWSConfig.SSOSession.Name
+		startURL = profile.AWSConfig.SSOSession.SSOStartURL
+	} else {
+		ssoTokenKey = profile.AWSConfig.SSOStartURL
+		startURL = profile.AWSConfig.SSOStartURL
+	}
 	// if profile == nil {...
 	// prompt for profile using fzf
 
-	credstore := NewSecureSSOTokenStorage()
+	credstore := securestorage.NewSecureSSOTokenStorage()
+	//credstore.SecureStorage.StoragePrefix = "aws-fuzzy"
+	//credstore.SecureStorage.StorageSuffix = "-sso-token"
+
+	cachedToken := credstore.GetValidSSOToken(ssoTokenKey)
+	if cachedToken == nil {
+		cfg, err := NewAwsConfig(ctx, nil)
+		newSSOToken, err := awsprofile.SSODeviceCodeFlowFromStartUrl(ctx, cfg, startURL)
+		if err != nil {
+			return &aws.Credentials{}, err
+		}
+
+		credstore.StoreSSOToken(ssoTokenKey, *newSSOToken)
+		//accessToken = &newSSOToken.AccessToken
+	} // else {
+	//	accessToken = &cachedToken.AccessToken
+	//}
 
 	if p.Url {
 		err := p.oidcUrl(ctx)
@@ -132,7 +157,7 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 		creds, err = p.LoginMFA(ctx)
 	} else {
 		// Everything else
-		creds, err = profile.AssumeTerminal(ctx, cfaws.ConfigOpts{Duration: time.Hour})
+		creds, err = profile.AssumeTerminal(ctx, awsprofile.ConfigOpts{Duration: time.Hour})
 	}
 
 	if err != nil {
@@ -166,8 +191,8 @@ func (p *Login) AssumeRoleWithCreds(ctx context.Context, parentcreds *aws.Creden
 		return aws.Credentials{}, err
 	}
 
-	creds := cfaws.TypeCredsToAwsCreds(*session.Credentials)
-	credstore := NewSecureSSOTokenStorage()
+	creds := awsprofile.TypeCredsToAwsCreds(*session.Credentials)
+	credstore := securestorage.NewSecureSSOTokenStorage()
 	credstore.SecureStorage.Store(profile.Name, creds)
 
 	return creds, err
@@ -187,7 +212,7 @@ func (p *Login) LoginMFA(ctx context.Context) (aws.Credentials, error) {
 
 	if len(profile.AWSConfig.SourceProfileName) > 0 {
 		// check if we have cached credentials for source profile
-		credstore := NewSecureSSOTokenStorage()
+		credstore := securestorage.NewSecureSSOTokenStorage()
 		credstore.SecureStorage.Retrieve(profile.AWSConfig.SourceProfileName, &creds)
 	}
 
@@ -214,7 +239,7 @@ func (p *Login) LoginMFA(ctx context.Context) (aws.Credentials, error) {
 			return aws.Credentials{}, err
 		}
 
-		creds = cfaws.TypeCredsToAwsCreds(*session.Credentials)
+		creds = awsprofile.TypeCredsToAwsCreds(*session.Credentials)
 	} else {
 		params := sts.AssumeRoleInput{
 			RoleArn:         &profile.AWSConfig.RoleARN,
@@ -225,7 +250,7 @@ func (p *Login) LoginMFA(ctx context.Context) (aws.Credentials, error) {
 			return aws.Credentials{}, err
 		}
 
-		creds = cfaws.TypeCredsToAwsCreds(*session.Credentials)
+		creds = awsprofile.TypeCredsToAwsCreds(*session.Credentials)
 	}
 
 	return creds, err
@@ -281,7 +306,7 @@ func (p *Login) oidcUrl(ctx context.Context) error {
 	}
 
 	fmt.Println(aws.ToString(deviceAuth.VerificationUriComplete))
-	token, err := cfaws.PollToken(ctx, ssooidcClient, *register.ClientSecret, *register.ClientId, *deviceAuth.DeviceCode, cfaws.PollingConfig{CheckInterval: time.Second * 2, TimeoutAfter: time.Minute * 2})
+	token, err := awsprofile.PollToken(ctx, ssooidcClient, *register.ClientSecret, *register.ClientId, *deviceAuth.DeviceCode, awsprofile.PollingConfig{CheckInterval: time.Second * 2, TimeoutAfter: time.Minute * 2})
 	if err != nil {
 		return err
 	}
