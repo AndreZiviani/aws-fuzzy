@@ -172,8 +172,7 @@ func SSODeviceCodeFlowFromStartUrl(ctx context.Context, cfg aws.Config, startUrl
 	clio.Info(url)
 
 	//check if sso browser path is set
-	config := afconfig.NewDefaultConfig()
-	config.Load()
+	config, err := afconfig.NewLoadedConfig()
 	if err != nil {
 		return nil, err
 	}

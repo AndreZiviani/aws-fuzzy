@@ -102,8 +102,7 @@ func (s *SecureStorage) ListKeys() ([]string, error) {
 }
 
 func (s *SecureStorage) openKeyring() (keyring.Keyring, error) {
-	cfg := afconfig.NewDefaultConfig()
-	err := cfg.Load()
+	cfg, err := afconfig.NewLoadedConfig()
 	if err != nil {
 		return nil, err
 	}

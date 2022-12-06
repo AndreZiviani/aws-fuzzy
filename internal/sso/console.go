@@ -31,9 +31,7 @@ func (p *Console) Execute(args []string) error {
 	spanSso, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssoconsolecmd")
 	defer spanSso.Finish()
 
-	p.OpenBrowser(ctx)
-
-	return err
+	return p.OpenBrowser(ctx)
 }
 
 func (p *Console) OpenBrowser(ctx context.Context) error {
@@ -67,8 +65,10 @@ func (p *Console) OpenBrowser(ctx context.Context) error {
 		return err
 	}
 
-	cfg := afconfig.NewDefaultConfig()
-	err = cfg.Load()
+	cfg, err := afconfig.NewLoadedConfig()
+	if err != nil {
+		return err
+	}
 
 	if cfg.DefaultBrowser == gbrowser.FirefoxKey {
 		session = fmt.Sprintf("ext+granted-containers:name=%s&url=%s", p.Profile, url.QueryEscape(session))
@@ -83,8 +83,7 @@ func (p *Console) OpenBrowser(ctx context.Context) error {
 }
 
 func (p *Console) LaunchConsoleSession(con string) error {
-	cfg := afconfig.NewDefaultConfig()
-	err := cfg.Load()
+	cfg, err := afconfig.NewLoadedConfig()
 	if err != nil {
 		return err
 	}

@@ -28,6 +28,12 @@ type KeyringConfig struct {
 	LibSecretCollectionName *string `toml:",omitempty"`
 }
 
+func NewLoadedConfig() (Config, error) {
+	cfg := NewDefaultConfig()
+	err := cfg.Load()
+	return cfg, err
+}
+
 // NewDefaultConfig returns a config with OS specific defaults populated
 func NewDefaultConfig() Config {
 	cfg := Config{AppName: "aws-fuzzy", AppNameConfig: "aws_fuzzy"}
