@@ -72,7 +72,6 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 
 	var creds aws.Credentials
 	var ssoTokenKey, startURL string
-	//var accessToken *string
 
 	profile, err := p.GetProfile(p.Profile)
 	if err != nil {
@@ -90,8 +89,6 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 	// prompt for profile using fzf
 
 	credstore := securestorage.NewSecureSSOTokenStorage()
-	//credstore.SecureStorage.StoragePrefix = "aws-fuzzy"
-	//credstore.SecureStorage.StorageSuffix = "-sso-token"
 
 	cachedToken := credstore.GetValidSSOToken(ssoTokenKey)
 	if cachedToken == nil {
@@ -102,10 +99,7 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 		}
 
 		credstore.StoreSSOToken(ssoTokenKey, *newSSOToken)
-		//accessToken = &newSSOToken.AccessToken
-	} // else {
-	//	accessToken = &cachedToken.AccessToken
-	//}
+	}
 
 	if p.Url {
 		err := p.oidcUrl(ctx)
