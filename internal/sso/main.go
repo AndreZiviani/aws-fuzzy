@@ -22,6 +22,7 @@ type Console struct {
 	Service string `short:"s" long:"service" description:"Open console at specific service"`
 	Url     bool   `short:"u" long:"url" description:"Only print login url"`
 	Verbose bool   `short:"v" long:"verbose" description:"Enable verbose messages"`
+	NoCache bool   `short:"n" long:"no-cache" description:"Dont use cached credentials"`
 }
 
 type Browser struct {

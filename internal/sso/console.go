@@ -38,7 +38,7 @@ func (p *Console) OpenBrowser(ctx context.Context) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ssorolecreds")
 	defer span.Finish()
 
-	login := Login{Profile: p.Profile}
+	login := Login{Profile: p.Profile, NoCache: p.NoCache}
 	login.LoadProfiles()
 	profile, err := login.GetProfile(p.Profile)
 	if err != nil {
