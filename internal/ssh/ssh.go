@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/AndreZiviani/aws-fuzzy/internal/common"
 	"github.com/AndreZiviani/aws-fuzzy/internal/sso"
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -89,7 +88,8 @@ func (p *Ssh) Execute(args []string) error {
 
 	// Expand ~ if present
 	if p.Key[0] == '~' {
-		p.Key = fmt.Sprintf("%s/%s", common.UserHomeDir, p.Key[2:])
+		homeDir, _ := os.UserHomeDir()
+		p.Key = fmt.Sprintf("%s/%s", homeDir, p.Key[2:])
 	}
 
 	instances, err := p.GetInstances(ctx)

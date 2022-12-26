@@ -5,20 +5,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/AndreZiviani/aws-fuzzy/internal/awsprofile"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/common-fate/granted/pkg/cfaws"
-	"github.com/common-fate/granted/pkg/securestorage"
 )
-
-func NewSecureSSOTokenStorage() securestorage.SSOTokensSecureStorage {
-	return securestorage.SSOTokensSecureStorage{
-		SecureStorage: securestorage.SecureStorage{
-			StorageSuffix: "aws-fuzzy",
-		},
-	}
-}
 
 func NewAwsConfig(ctx context.Context, creds *aws.Credentials, opts ...func(*config.LoadOptions) error) (aws.Config, error) {
 	cfg, err := config.LoadDefaultConfig(ctx, opts...)
@@ -38,11 +29,12 @@ func NewAwsConfig(ctx context.Context, creds *aws.Credentials, opts ...func(*con
 	return cfg, nil
 }
 
-func (p *Login) GetProfile(profile string) (*cfaws.Profile, error) {
+func (p *Login) GetProfile(profile string) (*awsprofile.Profile, error) {
+	p.profiles.LoadInitialisedProfile(context.TODO(), "default")
 	return p.profiles.LoadInitialisedProfile(context.TODO(), profile)
 }
 
-func (p *Login) GetProfileFromID(id string) (*cfaws.Profile, error) {
+func (p *Login) GetProfileFromID(id string) (*awsprofile.Profile, error) {
 	for _, v := range p.profiles.ProfileNames {
 		profile, _ := p.GetProfile(v)
 		if profile.ProfileType == "AWS_SSO" {

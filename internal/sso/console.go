@@ -7,11 +7,10 @@ import (
 	"os"
 	"path"
 
-	"github.com/AndreZiviani/aws-fuzzy/internal/common"
+	"github.com/AndreZiviani/aws-fuzzy/internal/afconfig"
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	gassume "github.com/common-fate/granted/pkg/assume"
 	gbrowser "github.com/common-fate/granted/pkg/browser"
-	"github.com/common-fate/granted/pkg/config"
 	gconsole "github.com/common-fate/granted/pkg/console"
 	"github.com/common-fate/granted/pkg/forkprocess"
 	glauncher "github.com/common-fate/granted/pkg/launcher"
@@ -32,9 +31,7 @@ func (p *Console) Execute(args []string) error {
 	spanSso, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssoconsolecmd")
 	defer spanSso.Finish()
 
-	p.OpenBrowser(ctx)
-
-	return err
+	return p.OpenBrowser(ctx)
 }
 
 func (p *Console) OpenBrowser(ctx context.Context) error {
@@ -68,7 +65,10 @@ func (p *Console) OpenBrowser(ctx context.Context) error {
 		return err
 	}
 
-	cfg, err := config.Load()
+	cfg, err := afconfig.NewLoadedConfig()
+	if err != nil {
+		return err
+	}
 
 	if cfg.DefaultBrowser == gbrowser.FirefoxKey {
 		session = fmt.Sprintf("ext+granted-containers:name=%s&url=%s", p.Profile, url.QueryEscape(session))
@@ -83,7 +83,7 @@ func (p *Console) OpenBrowser(ctx context.Context) error {
 }
 
 func (p *Console) LaunchConsoleSession(con string) error {
-	cfg, err := config.Load()
+	cfg, err := afconfig.NewLoadedConfig()
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func (p *Console) LaunchConsoleSession(con string) error {
 		return fmt.Errorf("default browser not configured. run `aws-fuzzy sso browser` to configure")
 	}
 
-	configDir := common.ConfigDir
+	configDir, _ := cfg.ConfigFolder()
 	if err != nil {
 		return err
 	}

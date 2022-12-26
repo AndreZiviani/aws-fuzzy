@@ -1,8 +1,8 @@
 package sso
 
 import (
-	"github.com/common-fate/granted/pkg/cfaws"
-	grantedconfig "github.com/common-fate/granted/pkg/config"
+	"github.com/AndreZiviani/aws-fuzzy/internal/afconfig"
+	"github.com/AndreZiviani/aws-fuzzy/internal/awsprofile"
 	flags "github.com/jessevdk/go-flags"
 )
 
@@ -13,7 +13,7 @@ type Login struct {
 	Verbose  bool   `short:"v" long:"verbose" description:"Enable verbose messages"`
 	Url      bool   `short:"u" long:"url" description:"Only print login url"`
 	NoCache  bool   `short:"n" long:"no-cache" description:"Dont use cached credentials"`
-	profiles cfaws.Profiles
+	profiles awsprofile.Profiles
 }
 
 type Console struct {
@@ -48,7 +48,8 @@ var (
 )
 
 func Init(parser *flags.Parser) {
-	grantedconfig.SetupConfigFolder()
+	config := afconfig.NewDefaultConfig()
+	config.SetupConfigFolder()
 
 	cmd, err := parser.AddCommand(
 		"sso",

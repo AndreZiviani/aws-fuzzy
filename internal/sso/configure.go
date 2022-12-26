@@ -9,11 +9,11 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/AndreZiviani/aws-fuzzy/internal/common"
+	"github.com/AndreZiviani/aws-fuzzy/internal/awsprofile"
+	"github.com/AndreZiviani/aws-fuzzy/internal/securestorage"
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sso"
-	"github.com/common-fate/granted/pkg/cfaws"
 	opentracing "github.com/opentracing/opentracing-go"
 	"gopkg.in/ini.v1"
 )
@@ -30,10 +30,10 @@ func (p *Configure) GetAccountAccess(ctx context.Context, startURL string, regio
 	cfg, err := NewAwsConfig(ctx, nil)
 	ssoclient := sso.NewFromConfig(cfg)
 
-	secureSSOTokenStorage := NewSecureSSOTokenStorage()
+	secureSSOTokenStorage := securestorage.NewSecureSSOTokenStorage()
 	ssoToken := secureSSOTokenStorage.GetValidSSOToken(startURL)
 	if ssoToken == nil {
-		ssoToken, err = cfaws.SSODeviceCodeFlowFromStartUrl(ctx, cfg, startURL)
+		ssoToken, err = awsprofile.SSODeviceCodeFlowFromStartUrl(ctx, cfg, startURL)
 		if err != nil {
 			return nil, err
 		}
@@ -155,7 +155,8 @@ func CopyFile(src, dst string) error {
 }
 
 func WriteSsoProfiles(profiles map[string]AwsProfile) error {
-	configDir := fmt.Sprintf("%s/.aws", common.UserHomeDir)
+	homeDir, _ := os.UserHomeDir()
+	configDir := fmt.Sprintf("%s/.aws", homeDir)
 	configPath := fmt.Sprintf("%s/config", configDir)
 
 	if _, err := os.Stat(configPath); err == nil {
