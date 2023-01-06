@@ -15,7 +15,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
-func (p *PortForward) DoPortForward(ctx context.Context, id, local, remote string) error {
+func (p *PortForward) DoPortForward(ctx context.Context, id, local, host, remote string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ssmportforward")
 	defer span.Finish()
 
@@ -30,12 +30,13 @@ func (p *PortForward) DoPortForward(ctx context.Context, id, local, remote strin
 		return err
 	}
 
-	docName := "AWS-StartPortForwardingSession" // https://us-east-1.console.aws.amazon.com/systems-manager/documents/AWS-StartPortForwardingSession/description?region=us-east-1
+	docName := "AWS-StartPortForwardingSessionToRemoteHost" // https://us-east-1.console.aws.amazon.com/systems-manager/documents/AWS-StartPortForwardingSession/description?region=us-east-1
 	input := &awsssm.StartSessionInput{
 		DocumentName: &docName,
 		Parameters: map[string][]string{
 			"portNumber":      []string{remote},
 			"localPortNumber": []string{local},
+			"host":            []string{host},
 		},
 		Target: &id,
 	}
@@ -124,5 +125,5 @@ func (p *PortForward) Execute(args []string) error {
 
 	ports := strings.Split(p.Ports, ":")
 
-	return p.DoPortForward(ctx, aws.ToString(instance.InstanceId), ports[0], ports[1])
+	return p.DoPortForward(ctx, aws.ToString(instance.InstanceId), ports[0], ports[1], ports[2])
 }
