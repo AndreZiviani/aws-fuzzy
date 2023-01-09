@@ -76,7 +76,7 @@ func ExtractAssets() (string, error) {
 func RunPlugin(args ...string) error {
 	process, err := ExtractAssets()
 	if err != nil {
-		return nil
+		return err
 	}
 
 	call := exec.Command(process, args...)
