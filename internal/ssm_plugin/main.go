@@ -60,11 +60,6 @@ func ExtractAssets() (string, error) {
 	info, err := os.Stat(pluginPath)
 
 	if os.IsNotExist(err) {
-		err = os.Mkdir(configDir, 0700)
-		if err != nil {
-			return "", err
-		}
-
 		err := ioutil.WriteFile(pluginPath, plugin, 0755)
 		return pluginPath, err
 	}
