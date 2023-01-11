@@ -2,7 +2,6 @@ package awsprofile
 
 import (
 	"context"
-	"os/exec"
 	"time"
 
 	"github.com/AndreZiviani/aws-fuzzy/internal/afconfig"
@@ -17,7 +16,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/common-fate/clio"
 	"github.com/hako/durafmt"
-	"github.com/pkg/browser"
 	"github.com/pkg/errors"
 	"gopkg.in/ini.v1"
 )
@@ -70,7 +68,7 @@ func (c *Profile) SSOLogin(ctx context.Context, configOpts ConfigOpts) (aws.Cred
 	cachedToken := secureSSOTokenStorage.GetValidSSOToken(ssoTokenKey)
 	var accessToken *string
 	if cachedToken == nil {
-		newSSOToken, err := SSODeviceCodeFlowFromStartUrl(ctx, *cfg, startURL)
+		newSSOToken, err := SSODeviceCodeFlowFromStartUrl(ctx, *cfg, startURL, ssoTokenKey, configOpts.PrintOnly)
 		if err != nil {
 			return aws.Credentials{}, err
 		}
@@ -144,7 +142,7 @@ func (c *Profile) SSOLogin(ctx context.Context, configOpts ConfigOpts) (aws.Cred
 }
 
 // SSODeviceCodeFlowFromStartUrl contains all the steps to complete a device code flow to retrieve an SSO token
-func SSODeviceCodeFlowFromStartUrl(ctx context.Context, cfg aws.Config, startUrl string) (*securestorage.SSOToken, error) {
+func SSODeviceCodeFlowFromStartUrl(ctx context.Context, cfg aws.Config, startUrl string, profile string, printOnly bool) (*securestorage.SSOToken, error) {
 	ssooidcClient := ssooidc.NewFromConfig(cfg)
 
 	register, err := ssooidcClient.RegisterClient(ctx, &ssooidc.RegisterClientInput{
@@ -168,35 +166,44 @@ func SSODeviceCodeFlowFromStartUrl(ctx context.Context, cfg aws.Config, startUrl
 	}
 	// trigger OIDC login. open browser to login. close tab once login is done. press enter to continue
 	url := aws.ToString(deviceAuth.VerificationUriComplete)
-	clio.Info("If the browser does not open automatically, please open this link:")
-	clio.Info(url)
-
-	//check if sso browser path is set
-	config, err := afconfig.NewLoadedConfig()
-	if err != nil {
-		return nil, err
+	if !printOnly {
+		clio.Info("If the browser does not open automatically, please open this link:")
+		clio.Info(url)
 	}
 
-	if config.CustomSSOBrowserPath != "" {
-		cmd := exec.Command(config.CustomSSOBrowserPath, url)
-		err = cmd.Start()
+	/*
+		//check if sso browser path is set
+		config, err := afconfig.NewLoadedConfig()
 		if err != nil {
-			// fail silently
-			clio.Debug(err.Error())
+			return nil, err
+		}
+
+		if config.CustomSSOBrowserPath != "" {
+			cmd := exec.Command(config.CustomSSOBrowserPath, url)
+			err = cmd.Start()
+			if err != nil {
+				// fail silently
+				clio.Debug(err.Error())
+			} else {
+				// detatch from this new process because it continues to run
+				err = cmd.Process.Release()
+				if err != nil {
+					// fail silently
+					clio.Debug(err.Error())
+				}
+			}
 		} else {
-			// detatch from this new process because it continues to run
-			err = cmd.Process.Release()
+			err = browser.OpenURL(url)
 			if err != nil {
 				// fail silently
 				clio.Debug(err.Error())
 			}
 		}
-	} else {
-		err = browser.OpenURL(url)
-		if err != nil {
-			// fail silently
-			clio.Debug(err.Error())
-		}
+	*/
+
+	err = afconfig.LaunchBrowser(url, profile, printOnly)
+	if err != nil {
+		return nil, err
 	}
 
 	clio.Info("Awaiting authentication in the browser...")

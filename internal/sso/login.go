@@ -93,19 +93,12 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 	cachedToken := credstore.GetValidSSOToken(ssoTokenKey)
 	if cachedToken == nil {
 		cfg, err := NewAwsConfig(ctx, nil)
-		newSSOToken, err := awsprofile.SSODeviceCodeFlowFromStartUrl(ctx, cfg, startURL)
+		newSSOToken, err := awsprofile.SSODeviceCodeFlowFromStartUrl(ctx, cfg, startURL, ssoTokenKey, p.Url)
 		if err != nil {
 			return &aws.Credentials{}, err
 		}
 
 		credstore.StoreSSOToken(ssoTokenKey, *newSSOToken)
-	}
-
-	if p.Url {
-		err := p.oidcUrl(ctx)
-		if err != nil {
-			return &aws.Credentials{}, err
-		}
 	}
 
 	if p.NoCache {
@@ -151,7 +144,7 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 		creds, err = p.LoginMFA(ctx)
 	} else {
 		// Everything else
-		creds, err = profile.AssumeTerminal(ctx, awsprofile.ConfigOpts{Duration: time.Hour})
+		creds, err = profile.AssumeTerminal(ctx, awsprofile.ConfigOpts{Duration: time.Hour, PrintOnly: p.Url})
 	}
 
 	if err != nil {

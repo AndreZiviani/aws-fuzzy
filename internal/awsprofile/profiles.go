@@ -20,8 +20,9 @@ import (
 )
 
 type ConfigOpts struct {
-	Duration time.Duration
-	Args     []string
+	Duration  time.Duration
+	Args      []string
+	PrintOnly bool
 }
 
 type Profile struct {
