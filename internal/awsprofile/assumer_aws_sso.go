@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/AndreZiviani/aws-fuzzy/internal/afconfig"
 	"github.com/AndreZiviani/aws-fuzzy/internal/securestorage"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -68,7 +67,7 @@ func (c *Profile) SSOLogin(ctx context.Context, configOpts ConfigOpts) (aws.Cred
 	cachedToken := secureSSOTokenStorage.GetValidSSOToken(ssoTokenKey)
 	var accessToken *string
 	if cachedToken == nil {
-		newSSOToken, err := SSODeviceCodeFlowFromStartUrl(ctx, *cfg, startURL, ssoTokenKey, configOpts.PrintOnly)
+		newSSOToken, err := SSODeviceCodeFlowFromStartUrl(ctx, *cfg, startURL, c.Name, configOpts.PrintOnly)
 		if err != nil {
 			return aws.Credentials{}, err
 		}
@@ -171,37 +170,7 @@ func SSODeviceCodeFlowFromStartUrl(ctx context.Context, cfg aws.Config, startUrl
 		clio.Info(url)
 	}
 
-	/*
-		//check if sso browser path is set
-		config, err := afconfig.NewLoadedConfig()
-		if err != nil {
-			return nil, err
-		}
-
-		if config.CustomSSOBrowserPath != "" {
-			cmd := exec.Command(config.CustomSSOBrowserPath, url)
-			err = cmd.Start()
-			if err != nil {
-				// fail silently
-				clio.Debug(err.Error())
-			} else {
-				// detatch from this new process because it continues to run
-				err = cmd.Process.Release()
-				if err != nil {
-					// fail silently
-					clio.Debug(err.Error())
-				}
-			}
-		} else {
-			err = browser.OpenURL(url)
-			if err != nil {
-				// fail silently
-				clio.Debug(err.Error())
-			}
-		}
-	*/
-
-	err = afconfig.LaunchBrowser(url, profile, printOnly)
+	err = LaunchBrowser(url, profile, "sso", printOnly)
 	if err != nil {
 		return nil, err
 	}

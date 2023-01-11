@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/AndreZiviani/aws-fuzzy/internal/afconfig"
+	"github.com/AndreZiviani/aws-fuzzy/internal/awsprofile"
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	gconsole "github.com/common-fate/granted/pkg/console"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -58,5 +58,5 @@ func (p *Console) OpenBrowser(ctx context.Context) error {
 		return err
 	}
 
-	return afconfig.LaunchBrowser(session, p.Profile, p.Url)
+	return awsprofile.LaunchBrowser(session, p.Profile, "console", p.Url)
 }
