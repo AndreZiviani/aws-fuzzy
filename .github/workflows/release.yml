@@ -25,7 +25,7 @@ jobs:
 
       - id: sdk-version
         run: |
-          echo "version=$(curl -s https://api.github.com/repos/phracker/MacOSX-SDKs/releases/latest | jq -r .tag_name)" >> $GITHUB_OUTPUT
+          echo "version=$(curl -s https://api.github.com/repos/phracker/MacOSX-SDKs/releases/latest | jq -r .tag_name)" | tee -a $GITHUB_OUTPUT
 
       - name: Checkout
         uses: actions/checkout@v2
