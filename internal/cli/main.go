@@ -14,12 +14,13 @@ var (
 	Parser = flags.NewParser(nil, flags.Default)
 )
 
-func Run() {
+func Run() error {
 	ssh.Init(Parser)
 	config.Init(Parser)
 	chart.Init(Parser)
 	sso.Init(Parser)
 	ssm.Init(Parser)
 	version.Init(Parser)
-	Parser.Parse()
+	_, err := Parser.Parse()
+	return err
 }

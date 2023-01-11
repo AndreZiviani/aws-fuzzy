@@ -38,7 +38,7 @@ func (p *Profiles) ParseCustomSSOProfile(ctx context.Context, profile *Profile) 
 		// New profile with SSO Session
 		s, ok := p.sessions[item.Value()]
 		if ok == false {
-			return nil, err
+			return nil, fmt.Errorf("Could not find a session named %s in profile %s\n", item.Value(), profile.Name)
 		}
 		err = s.init(ctx)
 		if err != nil {
