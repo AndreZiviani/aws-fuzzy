@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/common-fate/clio"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
@@ -36,6 +37,10 @@ func (p *Login) Execute(args []string) error {
 	tracer := opentracing.GlobalTracer()
 	spanSso, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssologincmd")
 	defer spanSso.Finish()
+
+	if p.Verbose {
+		clio.SetLevelFromString("debug")
+	}
 
 	creds, err := p.GetCredentials(ctx)
 	if err != nil {

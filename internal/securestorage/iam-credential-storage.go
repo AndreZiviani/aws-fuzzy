@@ -11,6 +11,7 @@ func NewSecureIAMCredentialStorage() IAMCredentialsSecureStorage {
 		SecureStorage: SecureStorage{
 			StoragePrefix: "aws-fuzzy",
 			StorageSuffix: "aws-iam-credentials",
+			Debug:         false,
 		},
 	}
 }

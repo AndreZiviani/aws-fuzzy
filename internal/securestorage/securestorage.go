@@ -17,6 +17,8 @@ import (
 type SecureStorage struct {
 	StoragePrefix string
 	StorageSuffix string
+	Debug         bool
+	keyring       keyring.Keyring
 }
 
 // returns false if the key is not found, true if it is found, or false and an error if there was a keyring related error
@@ -102,6 +104,10 @@ func (s *SecureStorage) ListKeys() ([]string, error) {
 }
 
 func (s *SecureStorage) openKeyring() (keyring.Keyring, error) {
+	if s.keyring != nil {
+		return s.keyring, nil
+	}
+
 	cfg, err := afconfig.NewLoadedConfig()
 	if err != nil {
 		return nil, err
@@ -167,6 +173,8 @@ func (s *SecureStorage) openKeyring() (keyring.Keyring, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "opening keyring")
 	}
+
+	s.keyring = k
 
 	return k, nil
 }
