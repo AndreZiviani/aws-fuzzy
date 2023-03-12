@@ -18,6 +18,7 @@ func Peering(ctx context.Context, profile string, account string, region string)
 		Region:  region,
 		Pager:   false,
 		Service: "EC2",
+		Type:    "VPCPeeringConnection",
 		Select: "configuration.requesterVpcInfo.ownerId" +
 			", configuration.requesterVpcInfo.vpcId" +
 			", configuration.requesterVpcInfo.region" +
@@ -37,6 +38,7 @@ func Peering(ctx context.Context, profile string, account string, region string)
 		Region:  region,
 		Pager:   false,
 		Service: "EC2",
+		Type:    "VPC",
 		Select: "resourceId" +
 			", configuration.ownerId" +
 			", tags",
@@ -44,12 +46,12 @@ func Peering(ctx context.Context, profile string, account string, region string)
 		Limit:  0,
 	}
 
-	peeringResult, err := peering.QueryConfig(ctx, "VPCPeeringConnection%")
+	peeringResult, err := peering.QueryConfig(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	vpcResult, err := vpc.QueryConfig(ctx, "VPC")
+	vpcResult, err := vpc.QueryConfig(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

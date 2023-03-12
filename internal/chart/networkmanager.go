@@ -24,6 +24,13 @@ import (
 	"github.com/go-echarts/go-echarts/v2/opts"
 )
 
+func NewNM(profile string) *NM {
+	nm := NM{
+		Profile: profile,
+	}
+	return &nm
+}
+
 func mapRegistrations(tgs []*vpc.DescribeTGRegistrationsOutput) *opts.TreeData {
 	transitgatewaynodes := make([]*opts.TreeData, 0)
 	regions := make(map[string][]*opts.TreeData)
@@ -174,7 +181,8 @@ func NetworkManager(ctx context.Context, p *NM) ([]opts.TreeData, error) {
 		return nil, err
 	}
 
-	cfg, err := sso.NewAwsConfig(ctx, creds, config.WithRegion(p.Region))
+	// NetworkManager is only available in us-west-2 (for now...)
+	cfg, err := sso.NewAwsConfig(ctx, creds, config.WithRegion("us-west-2"))
 	if err != nil {
 		return nil, err
 	}
@@ -251,10 +259,7 @@ func NetworkManager(ctx context.Context, p *NM) ([]opts.TreeData, error) {
 
 }
 
-func (p *NM) Execute(args []string) error {
-
-	ctx := context.Background()
-
+func (p *NM) Execute(ctx context.Context) error {
 	closer, err := tracing.InitTracing()
 	if err != nil {
 		fmt.Printf("failed to initialize tracing, %s\n", err)
@@ -265,8 +270,6 @@ func (p *NM) Execute(args []string) error {
 	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "chart")
 	defer span.Finish()
 
-	// NetworkManager is only available in us-west-2 (for now...)
-	p.Region = "us-west-2"
 	tree, err := NetworkManager(ctx, p)
 
 	if err != nil {

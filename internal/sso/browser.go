@@ -18,10 +18,16 @@ import (
 	"golang.org/x/text/language"
 )
 
-func (p *Browser) Execute(args []string) error {
+func NewBrowser(browser string, verbose bool) *Browser {
+	b := Browser{
+		Browser: browser,
+		Verbose: verbose,
+	}
 
-	ctx := context.Background()
+	return &b
+}
 
+func (p *Browser) Execute(ctx context.Context) error {
 	closer, err := tracing.InitTracing()
 	if err != nil {
 		fmt.Printf("failed to initialize tracing, %s\n", err)
