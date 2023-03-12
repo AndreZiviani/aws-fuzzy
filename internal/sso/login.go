@@ -19,18 +19,28 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
+func NewLogin(profile, token string, ask, verbose, url, noCache bool) *Login {
+	login := Login{
+		Profile: profile,
+		MFATOTP: token,
+		Ask:     ask,
+		Verbose: verbose,
+		Url:     url,
+		NoCache: noCache,
+	}
+
+	return &login
+}
+
 func (p *Login) LoadProfiles() {
 	awsProfiles, _ := awsprofile.LoadProfiles()
 	p.profiles = *awsProfiles
 }
 
-func (p *Login) Execute(args []string) error {
-
-	ctx := context.Background()
-
+func (p *Login) Execute(ctx context.Context) error {
 	closer, err := tracing.InitTracing()
 	if err != nil {
-		fmt.Printf("failed to initialize tracing, %s\n", err)
+		return fmt.Errorf("failed to initialize tracing, %s\n", err)
 	}
 	defer closer.Close()
 

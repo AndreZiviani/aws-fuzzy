@@ -1,56 +1,75 @@
 package chart
 
 import (
-	flags "github.com/jessevdk/go-flags"
+	"github.com/urfave/cli/v2"
 )
 
 type Peering struct {
-	Profile string `short:"p" long:"profile" env:"AWS_PROFILE" default:"default" description:"What profile to use"`
-	Account string `short:"a" long:"account" default:"" description:"Filter results to this account"`
-	Region  string `short:"r" long:"region" env:"AWS_REGION" default:"us-east-1" description:"What region to use"`
+	Profile string
+	Account string
+	Region  string
 }
 
 type NM struct {
-	Profile string `short:"p" long:"profile" env:"AWS_PROFILE" default:"default" description:"What profile to use"`
-
-	// Hardcoded to us-west-2 because network manager is only available there for now
-	Region string `hidden:"true" short:"r" long:"region" env:"AWS_REGION" default:"us-east-1" description:"What region to use"`
+	Profile string
 }
 
-type TGroutes struct {
-	Profile string `short:"p" long:"profile" env:"AWS_PROFILE" default:"default" description:"What profile to use"`
-	Region  string `short:"r" long:"region" env:"AWS_REGION" default:"us-east-1" description:"What region to use"`
+type TGRoutes struct {
+	Profile string
+	Region  string
 }
 
-var (
-	_peering  Peering
-	_nm       NM
-	_tgroutes TGroutes
-)
+func Command() *cli.Command {
+	command := cli.Command{
+		Name:  "chart",
+		Usage: "Chart relationship between resources",
+		Subcommands: []*cli.Command{
+			{
+				Name:  "peering",
+				Usage: "Chart VPC peering relationship",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "profile", Aliases: []string{"p"}, Usage: "What profile to use", Value: "$AWS_PROFILE", EnvVars: []string{"AWSFUZZY_PROFILE", "AWS_PROFILE"}},
+					&cli.StringFlag{Name: "account", Aliases: []string{"a"}, Usage: "Filter Config resources to this account"},
+					&cli.StringFlag{Name: "region", Aliases: []string{"r"}, Usage: "What AWS region to use", Value: "us-east-1", EnvVars: []string{"AWS_REGION", "AWS_DEFAULT_REGION"}},
+				},
+				Action: func(c *cli.Context) error {
+					peering := NewPeering(c.String("profile"),
+						c.String("account"),
+						c.String("region"),
+					)
 
-func Init(parser *flags.Parser) {
-	cmd, err := parser.AddCommand(
-		"chart",
-		"Chart",
-		"Chart relationship between resources",
-		&struct{}{})
+					return peering.Execute(c.Context)
+				},
+			},
+			{
+				Name:  "nm",
+				Usage: "Chart NetworkManager topology",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "profile", Aliases: []string{"p"}, Usage: "What profile to use", Value: "$AWS_PROFILE", EnvVars: []string{"AWSFUZZY_PROFILE", "AWS_PROFILE"}},
+				},
+				Action: func(c *cli.Context) error {
+					nm := NewNM(c.String("profile"))
 
-	if err != nil {
-		return
+					return nm.Execute(c.Context)
+				},
+			},
+			{
+				Name:  "tgroutes",
+				Usage: "Chart TransitGateway route tables",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "profile", Aliases: []string{"p"}, Usage: "What profile to use", Value: "$AWS_PROFILE", EnvVars: []string{"AWSFUZZY_PROFILE", "AWS_PROFILE"}},
+					&cli.StringFlag{Name: "region", Aliases: []string{"r"}, Usage: "What AWS region to use", Value: "us-east-1", EnvVars: []string{"AWS_REGION", "AWS_DEFAULT_REGION"}},
+				},
+				Action: func(c *cli.Context) error {
+					tgroutes := NewTGRoutes(c.String("profile"),
+						c.String("region"),
+					)
+
+					return tgroutes.Execute(c.Context)
+				},
+			},
+		},
 	}
 
-	cmd.AddCommand("peering",
-		"Chart peering relationship",
-		"Chart peering relationship",
-		&_peering)
-
-	cmd.AddCommand("nm",
-		"Chart NetworkManager topology",
-		"Chart NetworkManager topology",
-		&_nm)
-
-	cmd.AddCommand("tgroutes",
-		"Chart TransitGateway route tables",
-		"Chart TransitGateway route tables",
-		&_tgroutes)
+	return &command
 }

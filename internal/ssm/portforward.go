@@ -15,6 +15,16 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
+func NewPortForward(profile, region, ports string) *PortForward {
+	pf := PortForward{
+		Profile: profile,
+		Region:  region,
+		Ports:   ports,
+	}
+
+	return &pf
+}
+
 func (p *PortForward) DoPortForward(ctx context.Context, id, local, host, remote string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ssmportforward")
 	defer span.Finish()
@@ -86,10 +96,7 @@ func (p *PortForward) DoPortForward(ctx context.Context, id, local, host, remote
 	return err
 }
 
-func (p *PortForward) Execute(args []string) error {
-
-	ctx := context.Background()
-
+func (p *PortForward) Execute(ctx context.Context) error {
 	closer, err := tracing.InitTracing()
 	if err != nil {
 		fmt.Printf("failed to initialize tracing, %s\n", err)

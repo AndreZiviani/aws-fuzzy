@@ -1,47 +1,62 @@
 package ssm
 
 import (
-	flags "github.com/jessevdk/go-flags"
+	"github.com/urfave/cli/v2"
 )
 
 type Session struct {
-	Profile string `short:"p" long:"profile" env:"AWS_PROFILE" default:"default" description:"What profile to use"`
-	Region  string `short:"r" long:"region" env:"AWS_REGION" description:"What region to use, if not specified defaults to $AWS_DEFAULT_REGION or us-east-1"`
-	Shell   string `short:"s" long:"shell" default:"bash" description:"What shell to use on the remote instance"`
+	Profile string
+	Region  string
+	Shell   string
 }
 
 type PortForward struct {
-	Profile string `short:"p" long:"profile" env:"AWS_PROFILE" default:"default" description:"What profile to use"`
-	Region  string `short:"r" long:"region" env:"AWS_REGION" description:"What region to use, if not specified defaults to $AWS_DEFAULT_REGION or us-east-1"`
-	Ports   string `long:"ports" default:"8080:localhost:80" description:"Binds remote port to local, '<local>:<remote host>:<remote>'"`
+	Profile string
+	Region  string
+	Ports   string
 }
 
-var (
-	session     Session
-	portforward PortForward
-)
+func Command() *cli.Command {
+	command := cli.Command{
+		Name:  "ssm",
+		Usage: "Interact with EC2 instances via SSM",
+		Subcommands: []*cli.Command{
+			{
+				Name:  "session",
+				Usage: "Start a session on a EC2 instance",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "profile", Aliases: []string{"p"}, Usage: "What profile to use", Value: "$AWS_PROFILE", EnvVars: []string{"AWSFUZZY_PROFILE", "AWS_PROFILE"}},
+					&cli.StringFlag{Name: "region", Aliases: []string{"r"}, Usage: "What AWS region to use", Value: "us-east-1", EnvVars: []string{"AWS_REGION", "AWS_DEFAULT_REGION"}},
+					&cli.StringFlag{Name: "shell", Aliases: []string{"s"}, Value: "bash", Usage: "What shell to use on the remote instance"},
+				},
+				Action: func(c *cli.Context) error {
+					session := NewSession(c.String("profile"),
+						c.String("region"),
+						c.String("shell"),
+					)
 
-func Init(parser *flags.Parser) {
-	cmd, err := parser.AddCommand(
-		"ssm",
-		"Interact with EC2 instances via SSM",
-		"Interact with EC2 instances via SSM",
-		&struct{}{})
+					return session.Execute(c.Context)
+				},
+			},
+			{
+				Name:  "portforward",
+				Usage: "Start a portforwarding session on a EC2 instance",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "profile", Aliases: []string{"p"}, Usage: "What profile to use", Value: "$AWS_PROFILE", EnvVars: []string{"AWSFUZZY_PROFILE", "AWS_PROFILE"}},
+					&cli.StringFlag{Name: "region", Aliases: []string{"r"}, Usage: "What AWS region to use", Value: "us-east-1", EnvVars: []string{"AWS_REGION", "AWS_DEFAULT_REGION"}},
+					&cli.StringFlag{Name: "ports", Value: "8080:localhost:80", Usage: "Binds remote port to local, '<local port>:<remote host>:<remote port>'"},
+				},
+				Action: func(c *cli.Context) error {
+					pf := NewPortForward(c.String("profile"),
+						c.String("region"),
+						c.String("ports"),
+					)
 
-	if err != nil {
-		return
+					return pf.Execute(c.Context)
+				},
+			},
+		},
 	}
 
-	cmd.AddCommand(
-		"session",
-		"Start a session on a EC2 instance",
-		"Start a session on a EC2 instance",
-		&session)
-
-	cmd.AddCommand(
-		"portforward",
-		"Start a portforwarding session on a EC2 instance",
-		"Start a portforwarding session on a EC2 instance",
-		&portforward)
-
+	return &command
 }

@@ -15,6 +15,23 @@ import (
 	"github.com/opentracing/opentracing-go/log"
 )
 
+func New(profile, user, key string) *Ssh {
+	keyPath := key
+	// Expand ~ if present
+	if key[0] == '~' {
+		homeDir, _ := os.UserHomeDir()
+		keyPath = fmt.Sprintf("%s/%s", homeDir, key[2:])
+	}
+
+	ssh := Ssh{
+		Profile: profile,
+		User:    user,
+		Key:     keyPath,
+	}
+
+	return &ssh
+}
+
 func (p *Ssh) DoSsh(ip string) {
 	cmd := exec.Command("ssh", "-l", p.User, "-i", p.Key, ip)
 	cmd.Stdout = os.Stdout
@@ -68,29 +85,16 @@ func (p *Ssh) GetInstances(ctx context.Context) (*ec2.DescribeInstancesOutput, e
 
 }
 
-func (p *Ssh) Execute(args []string) error {
-
-	ctx := context.Background()
+func (p *Ssh) Execute(ctx context.Context) error {
 
 	closer, err := tracing.InitTracing()
 	if err != nil {
-		fmt.Printf("failed to initialize tracing, %s\n", err)
+		return fmt.Errorf("failed to initialize tracing, %s\n", err)
 	}
 	defer closer.Close()
 
 	tracer := opentracing.GlobalTracer()
 	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssh")
-
-	// Expand $USER env variable
-	if p.User == "$USER" {
-		p.User = os.Getenv("USER")
-	}
-
-	// Expand ~ if present
-	if p.Key[0] == '~' {
-		homeDir, _ := os.UserHomeDir()
-		p.Key = fmt.Sprintf("%s/%s", homeDir, p.Key[2:])
-	}
 
 	instances, err := p.GetInstances(ctx)
 	if err != nil {
@@ -106,5 +110,4 @@ func (p *Ssh) Execute(args []string) error {
 
 	p.DoSsh(aws.ToString(instance.PrivateIpAddress))
 	return nil
-
 }
