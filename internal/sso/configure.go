@@ -26,6 +26,14 @@ type AwsProfile struct {
 	CredentialProcess string `ini:"credential_process"`
 }
 
+func NewConfigure(verbose bool) *Configure {
+	configure := Configure{
+		Verbose: verbose,
+	}
+
+	return &configure
+}
+
 func (p *Configure) GetAccountAccess(ctx context.Context, startURL string, region string) (map[string]AwsProfile, error) {
 	cfg, err := NewAwsConfig(ctx, nil)
 	ssoclient := sso.NewFromConfig(cfg)
@@ -197,9 +205,7 @@ func WriteSsoProfiles(profiles map[string]AwsProfile) error {
 	return nil
 }
 
-func (p *Configure) Execute(args []string) error {
-	ctx := context.Background()
-
+func (p *Configure) Execute(ctx context.Context) error {
 	closer, err := tracing.InitTracing()
 	if err != nil {
 		fmt.Printf("failed to initialize tracing, %s\n", err)

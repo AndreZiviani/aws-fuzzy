@@ -22,6 +22,14 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
+func NewTGRoutes(profile, region string) *TGRoutes {
+	tgr := TGRoutes{
+		Profile: profile,
+		Region:  region,
+	}
+	return &tgr
+}
+
 type tgAttachmentRoutine struct {
 	Index       int
 	Subnet      *string
@@ -128,9 +136,7 @@ func processTables(ctx context.Context, ec2client *ec2.Client, tables []*vpc.Des
 	return tableNode, nil
 }
 
-func (p *TGroutes) Execute(args []string) error {
-	ctx := context.Background()
-
+func (p *TGRoutes) Execute(ctx context.Context) error {
 	closer, err := tracing.InitTracing()
 	if err != nil {
 		fmt.Printf("failed to initialize tracing, %s\n", err)

@@ -20,10 +20,17 @@ type awsCredsStdOut struct {
 	Expiration      string `json:"Expiration,omitempty"`
 }
 
-func (p *CredentialProcess) Execute(args []string) error {
+func NewCredentialProcess(profile, token string, verbose bool) *CredentialProcess {
+	cp := CredentialProcess{
+		Profile: profile,
+		MFATOTP: token,
+		Verbose: verbose,
+	}
 
-	ctx := context.Background()
+	return &cp
+}
 
+func (p *CredentialProcess) Execute(ctx context.Context) error {
 	closer, err := tracing.InitTracing()
 	if err != nil {
 		fmt.Printf("failed to initialize tracing, %s\n", err)

@@ -3,89 +3,143 @@ package sso
 import (
 	"github.com/AndreZiviani/aws-fuzzy/internal/afconfig"
 	"github.com/AndreZiviani/aws-fuzzy/internal/awsprofile"
-	flags "github.com/jessevdk/go-flags"
+	"github.com/urfave/cli/v2"
 )
 
 type Login struct {
-	Profile  string `short:"p" long:"profile" env:"AWS_PROFILE" default:"default" description:"What profile to use"`
-	Ask      bool   `long:"ask" env:"AWSFUZZY_ASK" description:"Ask before continuing"`
-	MFATOTP  string `short:"t" long:"token" description:"MFA TOTP if using IAM authentication with MFA"`
-	Verbose  bool   `short:"v" long:"verbose" description:"Enable verbose messages"`
-	Url      bool   `short:"u" long:"url" description:"Only print login url"`
-	NoCache  bool   `short:"n" long:"no-cache" description:"Dont use cached credentials"`
+	Profile  string
+	Ask      bool
+	MFATOTP  string
+	Verbose  bool
+	Url      bool
+	NoCache  bool
 	profiles awsprofile.Profiles
 }
 
 type Console struct {
-	Profile string `short:"p" long:"profile" env:"AWS_PROFILE" default:"default" description:"What profile to use"`
-	Region  string `short:"r" long:"region" env:"AWS_REGION" default:"us-east-1" description:"What region to use"`
-	Service string `short:"s" long:"service" description:"Open console at specific service"`
-	Url     bool   `short:"u" long:"url" description:"Only print login url"`
-	Verbose bool   `short:"v" long:"verbose" description:"Enable verbose messages"`
-	NoCache bool   `short:"n" long:"no-cache" description:"Dont use cached credentials"`
+	Profile string
+	Region  string
+	Service string
+	Url     bool
+	Verbose bool
+	NoCache bool
 }
 
 type Browser struct {
-	Browser string `short:"b" long:"browser" description:"Specify a default browser without prompts, e.g '-b firefox', '-b chrome'"`
-	Verbose bool   `short:"v" long:"verbose" description:"Enable verbose messages"`
+	Browser string
+	Verbose bool
 }
 
 type Configure struct {
-	Verbose bool `short:"v" long:"verbose" description:"Enable verbose messages"`
+	Verbose bool
 }
 
 type CredentialProcess struct {
-	Profile string `short:"p" long:"profile" env:"AWS_PROFILE" default:"default" description:"What profile to use"`
-	MFATOTP string `short:"t" long:"token" description:"MFA TOTP if using IAM authentication with MFA"`
-	Verbose bool   `short:"v" long:"verbose" description:"Enable verbose messages"`
+	Profile string
+	MFATOTP string
+	Verbose bool
 }
 
-var (
-	login             Login
-	console           Console
-	browser           Browser
-	configure         Configure
-	credentialProcess CredentialProcess
-)
+func Command() *cli.Command {
+	command := cli.Command{
+		Name:  "sso",
+		Usage: "SSO Utilities",
+		Subcommands: []*cli.Command{
+			{
+				Name:  "login",
+				Usage: "Login to AWS",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "profile", Aliases: []string{"p"}, Usage: "What profile to use", Value: "$AWS_PROFILE", EnvVars: []string{"AWSFUZZY_PROFILE", "AWS_PROFILE"}},
+					&cli.BoolFlag{Name: "ask", Usage: "Ask before continuing"},
+					&cli.StringFlag{Name: "token", Aliases: []string{"t"}, Usage: "MFA TOTP if using IAM authentication with MFA"},
+					&cli.BoolFlag{Name: "verbose", Aliases: []string{"v"}, Usage: "Enable verbose messages"},
+					&cli.BoolFlag{Name: "url", Aliases: []string{"u"}, Usage: "Only print login url"},
+					&cli.BoolFlag{Name: "no-cache", Aliases: []string{"n"}, Usage: "Dont use cached credentials"},
+				},
+				Action: func(c *cli.Context) error {
+					login := NewLogin(c.String("profile"),
+						c.String("token"),
+						c.Bool("ask"),
+						c.Bool("verbose"),
+						c.Bool("url"),
+						c.Bool("no-cache"),
+					)
 
-func Init(parser *flags.Parser) {
+					return login.Execute(c.Context)
+				},
+			},
+			{
+				Name:  "console",
+				Usage: "Open AWS Console",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "profile", Aliases: []string{"p"}, Usage: "What profile to use", Value: "$AWS_PROFILE", EnvVars: []string{"AWSFUZZY_PROFILE", "AWS_PROFILE"}},
+					&cli.StringFlag{Name: "region", Aliases: []string{"r"}, Usage: "What AWS region to use", Value: "us-east-1", EnvVars: []string{"AWS_REGION", "AWS_DEFAULT_REGION"}},
+					&cli.StringFlag{Name: "service", Aliases: []string{"s"}, Usage: "Open console at specific service"},
+					&cli.BoolFlag{Name: "url", Aliases: []string{"u"}, Usage: "Only print login url"},
+					&cli.BoolFlag{Name: "verbose", Aliases: []string{"v"}, Usage: "Enable verbose messages"},
+					&cli.BoolFlag{Name: "no-cache", Aliases: []string{"n"}, Usage: "Dont use cached credentials"},
+				},
+				Action: func(c *cli.Context) error {
+					console := NewConsole(c.String("profile"),
+						c.String("region"),
+						c.String("service"),
+						c.Bool("url"),
+						c.Bool("verbose"),
+						c.Bool("no-cache"),
+					)
+
+					return console.Execute(c.Context)
+				},
+			},
+			{
+				Name:  "browser",
+				Usage: "Configure default browser",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "browser", Aliases: []string{"b"}, Usage: "Specify a default browser without prompts, e.g '-b firefox', '-b chrome'"},
+					&cli.BoolFlag{Name: "verbose", Aliases: []string{"v"}, Usage: "Enable verbose messages"},
+				},
+				Action: func(c *cli.Context) error {
+					browser := NewBrowser(c.String("browser"),
+						c.Bool("verbose"),
+					)
+
+					return browser.Execute(c.Context)
+				},
+			},
+			{
+				Name:  "configure",
+				Usage: "Configure AWS SSO",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{Name: "verbose", Aliases: []string{"v"}, Usage: "Enable verbose messages"},
+				},
+				Action: func(c *cli.Context) error {
+					login := NewConfigure(c.Bool("verbose"))
+
+					return login.Execute(c.Context)
+				},
+			},
+			{
+				Name:  "credential-process",
+				Usage: "Integrate with native AWS CLI",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "profile", Aliases: []string{"p"}, Usage: "What profile to use", Value: "$AWS_PROFILE", EnvVars: []string{"AWSFUZZY_PROFILE", "AWS_PROFILE"}},
+					&cli.StringFlag{Name: "token", Aliases: []string{"t"}, Usage: "MFA TOTP if using IAM authentication with MFA"},
+					&cli.BoolFlag{Name: "verbose", Aliases: []string{"v"}, Usage: "Enable verbose messages"},
+				},
+				Action: func(c *cli.Context) error {
+					cp := NewCredentialProcess(c.String("profile"),
+						c.String("token"),
+						c.Bool("verbose"),
+					)
+
+					return cp.Execute(c.Context)
+				},
+			},
+		},
+	}
+
 	config := afconfig.NewDefaultConfig()
 	config.SetupConfigFolder()
 
-	cmd, err := parser.AddCommand(
-		"sso",
-		"SSO Utilities",
-		"Utilities developed to ease operation and configuration of AWS SSO.\n"+
-			"This is mostly imported from common-fate/granted so some log messages may display 'granted' as the application name",
-		&struct{}{})
-
-	if err != nil {
-		return
-	}
-
-	cmd.AddCommand("login",
-		"Login to AWS",
-		"Login to AWS",
-		&login)
-
-	cmd.AddCommand("console",
-		"Open AWS Console",
-		"Open AWS Console",
-		&console)
-
-	cmd.AddCommand("browser",
-		"Configure default browser",
-		"Configure default browser, configuration is stored in ~/.dgranted",
-		&browser)
-
-	cmd.AddCommand("configure",
-		"Configure AWS SSO",
-		"Configure local profiles with AWS accounts available from SSO",
-		&configure)
-
-	cmd.AddCommand("credential-process",
-		"Integrate with native AWS CLI",
-		"Configure native AWS CLI to use aws-fuzzy to authenticate",
-		&credentialProcess)
-
+	return &command
 }

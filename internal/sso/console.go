@@ -10,10 +10,20 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
-func (p *Console) Execute(args []string) error {
+func NewConsole(profile, region, service string, url, verbose, noCache bool) *Console {
+	console := Console{
+		Profile: profile,
+		Region:  region,
+		Service: service,
+		Url:     url,
+		Verbose: verbose,
+		NoCache: noCache,
+	}
 
-	ctx := context.Background()
+	return &console
+}
 
+func (p *Console) Execute(ctx context.Context) error {
 	closer, err := tracing.InitTracing()
 	if err != nil {
 		fmt.Printf("failed to initialize tracing, %s\n", err)

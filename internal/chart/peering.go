@@ -17,6 +17,15 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
+func NewPeering(profile, account, region string) *Peering {
+	peering := Peering{
+		Profile: profile,
+		Account: account,
+		Region:  region,
+	}
+	return &peering
+}
+
 type VPCResult struct {
 	VpcId   string       `json:"resourceId"`
 	Tags    []ConfigTags `json:"tags"`
@@ -64,9 +73,7 @@ type Node struct {
 	Account string
 }
 
-func (p *Peering) Execute(args []string) error {
-	ctx := context.Background()
-
+func (p *Peering) Execute(ctx context.Context) error {
 	closer, err := tracing.InitTracing()
 	if err != nil {
 		fmt.Printf("failed to initialize tracing, %s\n", err)

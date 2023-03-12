@@ -19,6 +19,41 @@ import (
 	//"github.com/opentracing/opentracing-go/log"
 )
 
+func New(profile, account, region, selectFilter, filter, service, serviceType string, pager bool, limit int) *Config {
+	config := Config{
+		Profile: profile,
+		Account: account,
+		Region:  region,
+		Select:  selectFilter,
+		Filter:  filter,
+		Service: service,
+		Type:    serviceType,
+		Pager:   pager,
+		Limit:   limit,
+	}
+
+	return &config
+}
+
+func (p *Config) Execute(ctx context.Context) error {
+	closer, err := tracing.InitTracing()
+	if err != nil {
+		return fmt.Errorf("failed to initialize tracing, %s\n", err)
+	}
+	defer closer.Close()
+
+	tracer := opentracing.GlobalTracer()
+	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "config")
+	defer span.Finish()
+
+	results, err := p.QueryConfig(ctx)
+	if err != nil {
+		return err
+	}
+
+	return p.Print(results)
+}
+
 // Pretty print json output
 func (p *Config) Print(slices []string) error {
 
@@ -40,7 +75,7 @@ func (p *Config) Print(slices []string) error {
 	return nil
 }
 
-func (p *Config) QueryConfig(ctx context.Context, subservice string) ([]string, error) {
+func (p *Config) QueryConfig(ctx context.Context) ([]string, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "config")
 
 	login := sso.Login{Profile: p.Profile}
@@ -62,6 +97,7 @@ func (p *Config) QueryConfig(ctx context.Context, subservice string) ([]string, 
 		&awsconfig.DescribeConfigurationAggregatorsInput{},
 	)
 	if err != nil {
+		// TODO: use local resources when no aggregators are available
 		fmt.Printf("failed to describe configuration aggregators, %s\n", err)
 		return nil, err
 	}
@@ -74,25 +110,30 @@ func (p *Config) QueryConfig(ctx context.Context, subservice string) ([]string, 
 
 	spanGetAggregators.Finish()
 
-	// Filter results to an account, if specified by the user
-	accountFilter := ""
-	if p.Account != "" {
-		account, err := login.GetProfile(p.Account)
-		if account == nil {
-			fmt.Printf("failed to get account %s, %s\n", p.Account, err)
-			return nil, err
+	query := p.Filter
+
+	if len(query) == 0 { // Empty filter, use default query
+		// Filter results to an account, if specified by the user
+		accountFilter := ""
+		if p.Account != "" {
+			account, err := login.GetProfile(p.Account)
+			if account == nil {
+				fmt.Printf("failed to get account %s, %s\n", p.Account, err)
+				return nil, err
+			}
+			accountFilter = fmt.Sprintf(" AND accountId like '%s'", account.AWSConfig.SSOAccountID)
 		}
-		accountFilter = fmt.Sprintf(" AND accountId like '%s'", account.AWSConfig.SSOAccountID)
+
+		filter := fmt.Sprintf("resourceType like 'AWS::%s::%s'", p.Service, p.Type)
+		if p.Filter != "" {
+			filter = p.Filter
+		}
+		query = fmt.Sprintf("SELECT %s WHERE %s %s", p.Select, filter, accountFilter)
+
 	}
 
+	// TODO: paginate
 	spanQuery, tmpctx := opentracing.StartSpanFromContext(ctx, "configquery")
-
-	filter := fmt.Sprintf("resourceType like 'AWS::%s::%s'", p.Service, subservice)
-	if p.Filter != "" {
-		filter = p.Filter
-	}
-	query := fmt.Sprintf("SELECT %s WHERE %s %s", p.Select, filter, accountFilter)
-
 	result, err := configclient.SelectAggregateResourceConfig(tmpctx,
 		&awsconfig.SelectAggregateResourceConfigInput{
 			ConfigurationAggregatorName: aggregators[0].ConfigurationAggregatorName,
@@ -109,45 +150,4 @@ func (p *Config) QueryConfig(ctx context.Context, subservice string) ([]string, 
 	span.Finish()
 	return result.Results, nil
 
-}
-
-func (p *Config) wrapper(args []string, subservice string) error {
-	ctx := context.Background()
-
-	closer, err := tracing.InitTracing()
-	if err != nil {
-		fmt.Printf("failed to initialize tracing, %s\n", err)
-	}
-	defer closer.Close()
-
-	tracer := opentracing.GlobalTracer()
-	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "config")
-	defer span.Finish()
-
-	results, err := p.QueryConfig(ctx, subservice)
-	if err != nil {
-		return err
-	}
-
-	return p.Print(results)
-
-}
-
-func (p *Ec2Config) Execute(args []string) error {
-	tmp := Config{
-		Profile: p.Profile,
-		Pager:   p.Pager,
-		Account: p.Account,
-		Region:  p.Region,
-		Select:  p.Select,
-		Filter:  p.Filter,
-		Limit:   p.Limit,
-		Service: p.Service,
-	}
-	return tmp.wrapper(args, p.Type)
-
-}
-
-func (p *Config) Execute(args []string) error {
-	return p.wrapper(args, "%")
 }

@@ -14,6 +14,16 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
+func NewSession(profile, region, shell string) *Session {
+	session := Session{
+		Profile: profile,
+		Region:  region,
+		Shell:   shell,
+	}
+
+	return &session
+}
+
 func (p *Session) DoSsm(ctx context.Context, id string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ssmsession")
 	defer span.Finish()
@@ -82,10 +92,7 @@ func (p *Session) DoSsm(ctx context.Context, id string) error {
 	return err
 }
 
-func (p *Session) Execute(args []string) error {
-
-	ctx := context.Background()
-
+func (p *Session) Execute(ctx context.Context) error {
 	closer, err := tracing.InitTracing()
 	if err != nil {
 		fmt.Printf("failed to initialize tracing, %s\n", err)
