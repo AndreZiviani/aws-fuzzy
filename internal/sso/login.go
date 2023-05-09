@@ -93,12 +93,16 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 		return nil, err
 	}
 
+	cfg, _ := NewAwsConfig(ctx, nil)
+
 	if profile.AWSConfig.SSOSession != nil {
 		ssoTokenKey = profile.AWSConfig.SSOSession.Name
 		startURL = profile.AWSConfig.SSOSession.SSOStartURL
+		cfg.Region = profile.AWSConfig.SSOSession.SSORegion
 	} else {
 		ssoTokenKey = profile.AWSConfig.SSOStartURL
 		startURL = profile.AWSConfig.SSOStartURL
+		cfg.Region = profile.AWSConfig.SSORegion
 	}
 	// if profile == nil {...
 	// prompt for profile using fzf
@@ -107,7 +111,6 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 
 	cachedToken := credstore.GetValidSSOToken(ssoTokenKey)
 	if cachedToken == nil {
-		cfg, err := NewAwsConfig(ctx, nil)
 		newSSOToken, err := awsprofile.SSODeviceCodeFlowFromStartUrl(ctx, cfg, startURL, profile.Name, p.Url)
 		if err != nil {
 			return &aws.Credentials{}, err
