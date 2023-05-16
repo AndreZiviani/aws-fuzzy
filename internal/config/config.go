@@ -132,22 +132,28 @@ func (p *Config) QueryConfig(ctx context.Context) ([]string, error) {
 
 	}
 
-	// TODO: paginate
 	spanQuery, tmpctx := opentracing.StartSpanFromContext(ctx, "configquery")
-	result, err := configclient.SelectAggregateResourceConfig(tmpctx,
+	configPag := awsconfig.NewSelectAggregateResourceConfigPaginator(
+		configclient,
 		&awsconfig.SelectAggregateResourceConfigInput{
 			ConfigurationAggregatorName: aggregators[0].ConfigurationAggregatorName,
 			Expression:                  aws.String(query),
 			MaxResults:                  100,
 		},
 	)
-	if err != nil {
-		fmt.Printf("failed to query config aggregator, %s\n", err)
-		return nil, err
+	results := make([]string, 0)
+	for configPag.HasMorePages() {
+		tmp, err := configPag.NextPage(ctx)
+		if err != nil {
+			fmt.Printf("failed to query config aggregator, %s\n", err)
+			return nil, err
+		}
+
+		results = append(results, tmp.Results...)
 	}
 	spanQuery.Finish()
 
 	span.Finish()
-	return result.Results, nil
+	return results, nil
 
 }
