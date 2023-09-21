@@ -41,6 +41,9 @@ func LaunchBrowser(url string, profile string, flow string, printOnly bool) erro
 	}
 
 	var containerName string
+	var l gassume.Launcher
+	finalUrl := url
+
 	if flow == "sso" {
 		if p.AWSConfig.SSOSession != nil {
 			containerName = p.AWSConfig.SSOSession.Name
@@ -51,27 +54,28 @@ func LaunchBrowser(url string, profile string, flow string, printOnly bool) erro
 		containerName = p.Name
 	}
 
-	var l gassume.Launcher
-	finalUrl := url
-
 	switch cfg.DefaultBrowser {
 	case gbrowser.ChromeKey:
 		l = glauncher.ChromeProfile{
+			BrowserType:    gbrowser.ChromeKey,
 			ExecutablePath: browserPath,
 			UserDataPath:   path.Join(configDir, "chromium-profiles", "1"), // held over for backwards compatibility, "1" indicates Chrome profiles
 		}
 	case gbrowser.BraveKey:
 		l = glauncher.ChromeProfile{
+			BrowserType:    gbrowser.BraveKey,
 			ExecutablePath: browserPath,
 			UserDataPath:   path.Join(configDir, "chromium-profiles", "2"), // held over for backwards compatibility, "2" indicates Brave profiles
 		}
 	case gbrowser.EdgeKey:
 		l = glauncher.ChromeProfile{
+			BrowserType:    gbrowser.EdgeKey,
 			ExecutablePath: browserPath,
 			UserDataPath:   path.Join(configDir, "chromium-profiles", "3"), // held over for backwards compatibility, "3" indicates Edge profiles
 		}
 	case gbrowser.ChromiumKey:
 		l = glauncher.ChromeProfile{
+			BrowserType:    gbrowser.ChromiumKey,
 			ExecutablePath: browserPath,
 			UserDataPath:   path.Join(configDir, "chromium-profiles", "4"), // held over for backwards compatibility, "4" indicates Chromium profiles
 		}
@@ -112,6 +116,14 @@ func LaunchBrowser(url string, profile string, flow string, printOnly bool) erro
 		}
 
 		finalUrl = fmt.Sprintf("ext+granted-containers:name=%s&url=%s&color=%s&icon=%s", containerName, neturl.QueryEscape(url), color, icon)
+	case gbrowser.SafariKey:
+		l = glauncher.Safari{}
+	case gbrowser.ArcKey:
+		l = glauncher.Arc{}
+	case gbrowser.FirefoxDevEditionKey:
+		l = glauncher.FirefoxDevEdition{
+			ExecutablePath: browserPath,
+		}
 	case gbrowser.StdoutKey:
 		fmt.Println(finalUrl)
 		return nil

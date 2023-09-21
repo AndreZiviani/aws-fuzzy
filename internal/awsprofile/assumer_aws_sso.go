@@ -2,8 +2,10 @@ package awsprofile
 
 import (
 	"context"
+	"os/exec"
 	"time"
 
+	"github.com/AndreZiviani/aws-fuzzy/internal/afconfig"
 	"github.com/AndreZiviani/aws-fuzzy/internal/securestorage"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -142,6 +144,11 @@ func (c *Profile) SSOLogin(ctx context.Context, configOpts ConfigOpts) (aws.Cred
 
 // SSODeviceCodeFlowFromStartUrl contains all the steps to complete a device code flow to retrieve an SSO token
 func SSODeviceCodeFlowFromStartUrl(ctx context.Context, cfg aws.Config, startUrl string, profile string, printOnly bool) (*securestorage.SSOToken, error) {
+	afcfg, err := afconfig.NewLoadedConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	ssooidcClient := ssooidc.NewFromConfig(cfg)
 
 	register, err := ssooidcClient.RegisterClient(ctx, &ssooidc.RegisterClientInput{
@@ -170,9 +177,25 @@ func SSODeviceCodeFlowFromStartUrl(ctx context.Context, cfg aws.Config, startUrl
 		clio.Info(url)
 	}
 
-	err = LaunchBrowser(url, profile, "sso", printOnly)
-	if err != nil {
-		return nil, err
+	if afcfg.CustomSSOBrowserPath != "" {
+		cmd := exec.Command(afcfg.CustomSSOBrowserPath, url)
+		err = cmd.Start()
+		if err != nil {
+			// fail silently
+			clio.Debug(err.Error())
+		} else {
+			// detach from this new process because it continues to run
+			err = cmd.Process.Release()
+			if err != nil {
+				// fail silently
+				clio.Debug(err.Error())
+			}
+		}
+	} else {
+		err = LaunchBrowser(url, profile, "sso", printOnly)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	clio.Info("Awaiting authentication in the browser...")

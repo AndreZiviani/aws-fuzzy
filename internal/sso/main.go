@@ -26,8 +26,9 @@ type Console struct {
 }
 
 type Browser struct {
-	Browser string
-	Verbose bool
+	Browser    string
+	SSOBrowser string
+	Verbose    bool
 }
 
 type Configure struct {
@@ -96,10 +97,12 @@ func Command() *cli.Command {
 				Usage: "Configure default browser",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "browser", Aliases: []string{"b"}, Usage: "Specify a default browser without prompts, e.g '-b firefox', '-b chrome'"},
+					&cli.StringFlag{Name: "sso-browser", Aliases: []string{"s"}, Usage: "Specify a sso browser without prompts, e.g '-s firefox', '-s chrome'"},
 					&cli.BoolFlag{Name: "verbose", Aliases: []string{"v"}, Usage: "Enable verbose messages"},
 				},
 				Action: func(c *cli.Context) error {
 					browser := NewBrowser(c.String("browser"),
+						c.String("sso-browser"),
 						c.Bool("verbose"),
 					)
 
