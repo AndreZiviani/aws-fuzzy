@@ -142,7 +142,7 @@ func (p *Browser) GetBrowserSelection(stdio survey.AskOpt, browserName string) (
 		browserPath = customBrowserPath
 
 		if browserKey == gbrowser.FirefoxKey {
-			err := gbrowser.RunFirefoxExtensionPrompts(browserPath)
+			err := gbrowser.RunFirefoxExtensionPrompts(browserPath, browserName)
 			if err != nil {
 				return err, "", ""
 			}

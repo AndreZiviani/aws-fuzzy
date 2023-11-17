@@ -5,7 +5,6 @@ import (
 	"fmt"
 	neturl "net/url"
 	"os"
-	"path"
 
 	"github.com/AndreZiviani/aws-fuzzy/internal/afconfig"
 	gassume "github.com/common-fate/granted/pkg/assume"
@@ -23,11 +22,6 @@ func LaunchBrowser(url string, profile string, flow string, printOnly bool) erro
 	browserPath := cfg.CustomBrowserPath
 	if browserPath == "" && cfg.DefaultBrowser != gbrowser.StdoutKey {
 		return fmt.Errorf("default browser not configured. run `aws-fuzzy sso browser` to configure")
-	}
-
-	configDir, _ := cfg.ConfigFolder()
-	if err != nil {
-		return err
 	}
 
 	profiles, err := LoadProfiles()
@@ -59,25 +53,21 @@ func LaunchBrowser(url string, profile string, flow string, printOnly bool) erro
 		l = glauncher.ChromeProfile{
 			BrowserType:    gbrowser.ChromeKey,
 			ExecutablePath: browserPath,
-			UserDataPath:   path.Join(configDir, "chromium-profiles", "1"), // held over for backwards compatibility, "1" indicates Chrome profiles
 		}
 	case gbrowser.BraveKey:
 		l = glauncher.ChromeProfile{
 			BrowserType:    gbrowser.BraveKey,
 			ExecutablePath: browserPath,
-			UserDataPath:   path.Join(configDir, "chromium-profiles", "2"), // held over for backwards compatibility, "2" indicates Brave profiles
 		}
 	case gbrowser.EdgeKey:
 		l = glauncher.ChromeProfile{
 			BrowserType:    gbrowser.EdgeKey,
 			ExecutablePath: browserPath,
-			UserDataPath:   path.Join(configDir, "chromium-profiles", "3"), // held over for backwards compatibility, "3" indicates Edge profiles
 		}
 	case gbrowser.ChromiumKey:
 		l = glauncher.ChromeProfile{
 			BrowserType:    gbrowser.ChromiumKey,
 			ExecutablePath: browserPath,
-			UserDataPath:   path.Join(configDir, "chromium-profiles", "4"), // held over for backwards compatibility, "4" indicates Chromium profiles
 		}
 	case gbrowser.FirefoxKey:
 		l = glauncher.Firefox{
