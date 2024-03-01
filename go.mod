@@ -13,7 +13,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/configservice v1.41.2
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.135.0
 	github.com/aws/aws-sdk-go-v2/service/networkmanager v1.22.2
-	github.com/aws/aws-sdk-go-v2/service/resourceexplorer2 v1.0.3
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.43.0
 	github.com/aws/aws-sdk-go-v2/service/sso v1.17.2
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.19.2
@@ -24,7 +23,6 @@ require (
 	github.com/gjbae1212/go-wraperror v0.7.0
 	github.com/go-echarts/go-echarts/v2 v2.3.2
 	github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b
-	github.com/jessevdk/go-flags v1.5.0
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rivo/tview v0.0.0-20231115183240-7c9e464bac02
@@ -50,7 +48,7 @@ require (
 	github.com/common-fate/useragent v0.1.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
 	github.com/danieljoos/wincred v1.2.0 // indirect
-	github.com/dvsekhvalnov/jose2go v1.5.0 // indirect
+	github.com/dvsekhvalnov/jose2go v1.6.0 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
