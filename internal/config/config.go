@@ -110,27 +110,22 @@ func (p *Config) QueryConfig(ctx context.Context) ([]string, error) {
 
 	spanGetAggregators.Finish()
 
-	query := p.Filter
-
-	if len(query) == 0 { // Empty filter, use default query
-		// Filter results to an account, if specified by the user
-		accountFilter := ""
-		if p.Account != "" {
-			account, err := login.GetProfile(p.Account)
-			if account == nil {
-				fmt.Printf("failed to get account %s, %s\n", p.Account, err)
-				return nil, err
-			}
-			accountFilter = fmt.Sprintf(" AND accountId like '%s'", account.AWSConfig.SSOAccountID)
+	// Filter results to an account, if specified by the user
+	accountFilter := ""
+	if p.Account != "" {
+		account, err := login.GetProfile(p.Account)
+		if account == nil {
+			fmt.Printf("failed to get account %s, %s\n", p.Account, err)
+			return nil, err
 		}
-
-		filter := fmt.Sprintf("resourceType like 'AWS::%s::%s'", p.Service, p.Type)
-		if p.Filter != "" {
-			filter = p.Filter
-		}
-		query = fmt.Sprintf("SELECT %s WHERE %s %s", p.Select, filter, accountFilter)
-
+		accountFilter = fmt.Sprintf(" AND accountId like '%s'", account.AWSConfig.SSOAccountID)
 	}
+
+	filter := fmt.Sprintf("resourceType like 'AWS::%s::%s'", p.Service, p.Type)
+	if p.Filter != "" {
+		filter += fmt.Sprintf(" and %s", p.Filter)
+	}
+	query := fmt.Sprintf("SELECT %s WHERE %s %s", p.Select, filter, accountFilter)
 
 	spanQuery, tmpctx := opentracing.StartSpanFromContext(ctx, "configquery")
 	configPag := awsconfig.NewSelectAggregateResourceConfigPaginator(
