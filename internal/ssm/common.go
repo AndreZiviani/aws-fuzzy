@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	awsssm "github.com/aws/aws-sdk-go-v2/service/ssm"
+	awsssmtypes "github.com/aws/aws-sdk-go-v2/service/ssm/types"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
 )
@@ -19,7 +20,15 @@ func GetInstances(ctx context.Context, cfg aws.Config) (*ec2.DescribeInstancesOu
 	ssmclient := awsssm.NewFromConfig(cfg)
 	ssmPag := awsssm.NewDescribeInstanceInformationPaginator(
 		ssmclient,
-		&awsssm.DescribeInstanceInformationInput{MaxResults: aws.Int32(50)},
+		&awsssm.DescribeInstanceInformationInput{
+			MaxResults: aws.Int32(50),
+			Filters: []awsssmtypes.InstanceInformationStringFilter{
+				{
+					Key:    aws.String("AssociationStatus"),
+					Values: []string{"Success"},
+				},
+			},
+		},
 	)
 	ssmInstances := make([]*awsssm.DescribeInstanceInformationOutput, 0)
 	for ssmPag.HasMorePages() {
