@@ -5,7 +5,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/99designs/keyring"
+	"github.com/jefferai/keyring"
+	// zkeyring "github.com/zalando/go-keyring"
 	"github.com/AlecAivazis/survey/v2"
 
 	"github.com/AndreZiviani/aws-fuzzy/internal/afconfig"
