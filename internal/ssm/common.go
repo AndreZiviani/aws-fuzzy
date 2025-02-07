@@ -24,6 +24,10 @@ func GetInstances(ctx context.Context, cfg aws.Config) (*ec2.DescribeInstancesOu
 			MaxResults: aws.Int32(50),
 			Filters: []awsssmtypes.InstanceInformationStringFilter{
 				{
+					Key:    aws.String("PingStatus"),
+					Values: []string{"Online"},
+				},
+				{
 					Key:    aws.String("AssociationStatus"),
 					Values: []string{"Success"},
 				},
