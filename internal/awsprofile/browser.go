@@ -125,7 +125,11 @@ func LaunchBrowser(url string, profile string, flow string, printOnly bool) erro
 		fmt.Println(finalUrl)
 	} else {
 		// now build the actual command to run - e.g. 'firefox --new-tab <URL>'
-		args := l.LaunchCommand(finalUrl, containerName)
+		args, err := l.LaunchCommand(finalUrl, containerName)
+		if err != nil {
+			return err
+		}
+
 		cmd, err := forkprocess.New(args...)
 		if err != nil {
 			return err
