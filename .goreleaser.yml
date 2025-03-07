@@ -49,15 +49,13 @@ builds:
         goarch: amd64
         goamd64: v1
         env:
-          - CGO_LDFLAGS=-mmacosx-version-min=10.14 --sysroot /home/runner/work/aws-fuzzy/sdk -F/System/Library/Frameworks -L/usr/lib
-          - CC=zig cc -target x86_64-macos-gnu -isysroot /home/runner/work/aws-fuzzy/sdk -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks
-          - CXX=zig c++ -target x86_64-macos-gnu -isysroot /home/runner/work/aws-fuzzy/sdk -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks
+          - CGO_LDFLAGS=--sysroot=/home/runner/work/aws-fuzzy/sdk -F/System/Library/Frameworks -L/usr/lib
+          - CC=zig cc -target x86_64-macos-none -I /home/runner/work/aws-fuzzy/sdk/usr/include -F /home/runner/work/aws-fuzzy/sdk/System/Library/Frameworks -L /usr/lib -Wno-availability -Wno-expansion-to-defined -Wno-nullability-completeness
       - goos: darwin
         goarch: arm64
         env:
-          - CGO_LDFLAGS=-mmacosx-version-min=11.1 --sysroot /home/runner/work/aws-fuzzy/sdk -F/System/Library/Frameworks -L/usr/lib
-          - CC=zig cc -target aarch64-macos-gnu -isysroot /home/runner/work/aws-fuzzy/sdk -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks
-          - CXX=zig c++ -target aarch64-macos-gnu -isysroot /home/runner/work/aws-fuzzy/sdk -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks
+          - CGO_LDFLAGS=--sysroot=/home/runner/work/aws-fuzzy/sdk -F/System/Library/Frameworks -L/usr/lib
+          - CC=zig cc -target aarch64-macos-none -I /home/runner/work/aws-fuzzy/sdk/usr/include -F /home/runner/work/aws-fuzzy/sdk/System/Library/Frameworks -L /usr/lib -Wno-availability -Wno-expansion-to-defined -Wno-nullability-completeness
 archives:
   - format: binary
 checksum:
