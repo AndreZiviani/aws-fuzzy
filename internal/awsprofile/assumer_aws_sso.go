@@ -66,7 +66,7 @@ func (c *Profile) SSOLogin(ctx context.Context, configOpts ConfigOpts) (aws.Cred
 	}
 
 	secureSSOTokenStorage := securestorage.NewSecureSSOTokenStorage()
-	cachedToken := secureSSOTokenStorage.GetValidSSOToken(ssoTokenKey)
+	cachedToken := secureSSOTokenStorage.GetValidSSOToken(ctx, ssoTokenKey)
 	var accessToken *string
 	if cachedToken == nil {
 		newSSOToken, err := SSODeviceCodeFlowFromStartUrl(ctx, *cfg, startURL, c.Name, configOpts.PrintOnly)
@@ -154,7 +154,8 @@ func SSODeviceCodeFlowFromStartUrl(ctx context.Context, cfg aws.Config, startUrl
 	register, err := ssooidcClient.RegisterClient(ctx, &ssooidc.RegisterClientInput{
 		ClientName: aws.String("cli-client"),
 		ClientType: aws.String("public"),
-		Scopes:     []string{"sso-portal:*"},
+		// https://docs.aws.amazon.com/singlesignon/latest/userguide/customermanagedapps-saml2-oauth2.html
+		Scopes: []string{"sso:account:access"},
 	})
 	if err != nil {
 		return nil, err
@@ -204,7 +205,15 @@ func SSODeviceCodeFlowFromStartUrl(ctx context.Context, cfg aws.Config, startUrl
 		return nil, err
 	}
 
-	return &securestorage.SSOToken{AccessToken: *token.AccessToken, Expiry: time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)}, nil
+	return &securestorage.SSOToken{
+		AccessToken:           aws.ToString(token.AccessToken),
+		Expiry:                time.Now().Add(time.Duration(token.ExpiresIn) * time.Second),
+		ClientID:              aws.ToString(register.ClientId),
+		ClientSecret:          aws.ToString(register.ClientSecret),
+		RegistrationExpiresAt: time.Unix(register.ClientSecretExpiresAt, 0),
+		Region:                cfg.Region,
+		RefreshToken:          token.RefreshToken,
+	}, nil
 }
 
 var ErrTimeout error = errors.New("polling for device authorization token timed out")

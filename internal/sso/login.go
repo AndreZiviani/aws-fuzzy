@@ -109,7 +109,7 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 
 	credstore := securestorage.NewSecureSSOTokenStorage()
 
-	cachedToken := credstore.GetValidSSOToken(ssoTokenKey)
+	cachedToken := credstore.GetValidSSOToken(ctx, ssoTokenKey)
 	if p.NoCache || cachedToken == nil {
 		newSSOToken, err := awsprofile.SSODeviceCodeFlowFromStartUrl(ctx, cfg, startURL, profile.Name, p.Url)
 		if err != nil {

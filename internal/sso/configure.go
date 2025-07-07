@@ -39,7 +39,7 @@ func (p *Configure) GetAccountAccess(ctx context.Context, startURL string, regio
 	ssoclient := sso.NewFromConfig(cfg)
 
 	secureSSOTokenStorage := securestorage.NewSecureSSOTokenStorage()
-	ssoToken := secureSSOTokenStorage.GetValidSSOToken(startURL)
+	ssoToken := secureSSOTokenStorage.GetValidSSOToken(ctx, startURL)
 	if ssoToken == nil {
 		ssoToken, err = awsprofile.SSODeviceCodeFlowFromStartUrl(ctx, cfg, startURL, startURL, false)
 		if err != nil {
