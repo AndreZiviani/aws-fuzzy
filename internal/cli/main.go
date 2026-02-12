@@ -8,6 +8,7 @@ import (
 
 	"github.com/AndreZiviani/aws-fuzzy/internal/chart"
 	"github.com/AndreZiviani/aws-fuzzy/internal/config"
+	"github.com/AndreZiviani/aws-fuzzy/internal/eks"
 	"github.com/AndreZiviani/aws-fuzzy/internal/ssm"
 	"github.com/AndreZiviani/aws-fuzzy/internal/sso"
 	"github.com/urfave/cli/v2"
@@ -40,6 +41,7 @@ func Run() error {
 			chart.Command(),
 			sso.Command(),
 			ssm.Command(),
+			eks.Command(),
 		},
 		EnableBashCompletion: true,
 	}

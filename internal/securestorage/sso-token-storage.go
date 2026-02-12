@@ -68,6 +68,11 @@ func (s *SSOTokensSecureStorage) GetValidSSOToken(ctx context.Context, profileKe
 		return nil
 	}
 
+	if !t.RegistrationExpiresAt.IsZero() && t.RegistrationExpiresAt.Before(now) {
+		clio.Warnf("SSO client registration has expired, a new device authorization will be required")
+		return nil
+	}
+
 	// if we get here, we can attempt to refresh the token
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
@@ -93,6 +98,7 @@ func (s *SSOTokensSecureStorage) GetValidSSOToken(ctx context.Context, profileKe
 		ClientSecret: &t.ClientSecret,
 		GrantType:    aws.String("refresh_token"),
 		RefreshToken: t.RefreshToken,
+		Scope:        []string{"sso:account:access"},
 	})
 	if err != nil {
 		clio.Errorf("error refreshing AWS IAM Identity Center token: %s", err.Error())

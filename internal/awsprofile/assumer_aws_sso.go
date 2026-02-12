@@ -74,7 +74,7 @@ func (c *Profile) SSOLogin(ctx context.Context, configOpts ConfigOpts) (aws.Cred
 			return aws.Credentials{}, err
 		}
 
-		secureSSOTokenStorage.StoreSSOToken(startURL, *newSSOToken)
+		secureSSOTokenStorage.StoreSSOToken(ssoTokenKey, *newSSOToken)
 		accessToken = &newSSOToken.AccessToken
 	} else {
 		accessToken = &cachedToken.AccessToken
@@ -87,7 +87,7 @@ func (c *Profile) SSOLogin(ctx context.Context, configOpts ConfigOpts) (aws.Cred
 		var unauthorised *ssotypes.UnauthorizedException
 		if errors.As(err, &unauthorised) {
 			// possible error with the access token we used, in this case we should clear our cached token and request a new one if the user tries again
-			secureSSOTokenStorage.ClearSSOToken(startURL)
+			secureSSOTokenStorage.ClearSSOToken(ssoTokenKey)
 		}
 		return aws.Credentials{}, err
 	}
@@ -152,10 +152,10 @@ func SSODeviceCodeFlowFromStartUrl(ctx context.Context, cfg aws.Config, startUrl
 	ssooidcClient := ssooidc.NewFromConfig(cfg)
 
 	register, err := ssooidcClient.RegisterClient(ctx, &ssooidc.RegisterClientInput{
-		ClientName: aws.String("cli-client"),
+		ClientName: aws.String("aws-fuzzy"),
 		ClientType: aws.String("public"),
-		// https://docs.aws.amazon.com/singlesignon/latest/userguide/customermanagedapps-saml2-oauth2.html
-		Scopes: []string{"sso:account:access"},
+		GrantTypes: []string{"urn:ietf:params:oauth:grant-type:device_code", "refresh_token"},
+		Scopes:     []string{"sso:account:access"},
 	})
 	if err != nil {
 		return nil, err
@@ -235,6 +235,7 @@ func PollToken(ctx context.Context, c *ssooidc.Client, clientSecret string, clie
 			ClientSecret: &clientSecret,
 			DeviceCode:   &deviceCode,
 			GrantType:    aws.String("urn:ietf:params:oauth:grant-type:device_code"),
+			Scope:        []string{"sso:account:access"},
 		})
 		var pendingAuth *ssooidctypes.AuthorizationPendingException
 		if err == nil {
