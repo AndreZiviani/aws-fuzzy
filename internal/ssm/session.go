@@ -46,7 +46,7 @@ func (p *Session) DoSsm(ctx context.Context, id string) error {
 			"command": []string{p.Shell},
 		},
 	}
-	inputJson, err := json.Marshal(input)
+	inputJson, _ := json.Marshal(input)
 
 	ssmclient := awsssm.NewFromConfig(cfg)
 
@@ -77,7 +77,7 @@ func (p *Session) DoSsm(ctx context.Context, id string) error {
 	*/
 
 	// for now we have to use the embeded the binary
-	ssm_plugin.RunPlugin(
+	_ = ssm_plugin.RunPlugin(
 		string(sessionJson),
 		p.Region,
 		"StartSession",
@@ -97,7 +97,7 @@ func (p *Session) Execute(ctx context.Context) error {
 	if err != nil {
 		fmt.Printf("failed to initialize tracing, %s\n", err)
 	}
-	defer closer.Close()
+	defer func() { _ = closer.Close() }()
 
 	tracer := opentracing.GlobalTracer()
 	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssm")

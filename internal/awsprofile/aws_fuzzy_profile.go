@@ -37,8 +37,8 @@ func (p *Profiles) ParseCustomSSOProfile(ctx context.Context, profile *Profile) 
 	if err == nil {
 		// New profile with SSO Session
 		s, ok := p.sessions[item.Value()]
-		if ok == false {
-			return nil, fmt.Errorf("Could not find a session named %s in profile %s\n", item.Value(), profile.Name)
+		if !ok {
+			return nil, fmt.Errorf("could not find a session named %s in profile %s", item.Value(), profile.Name)
 		}
 		err = s.init(ctx)
 		if err != nil {
@@ -126,7 +126,7 @@ func hasCustomSSOPrefix(rawConfig *ini.Section) bool {
 // as the user will certainly run into unexpected behaviour.
 func validateCredentialProcess(arg string, awsProfileName string) error {
 	afcfg := afconfig.NewDefaultConfig()
-	appName := "(" + afcfg.AppName + "|" + strings.Replace(afcfg.AppName, "-", "_", -1) + ")"
+	appName := "(" + afcfg.AppName + "|" + strings.ReplaceAll(afcfg.AppName, "-", "_") + ")"
 	regex := regexp.MustCompile(`^(\s+)?` + appName + `\s+sso\s+credential-process.*--profile\s+(?P<PName>([^\s]+))`)
 
 	if regex.MatchString(arg) {
@@ -136,7 +136,7 @@ func validateCredentialProcess(arg string, awsProfileName string) error {
 		profileName := matches[pNameIndex]
 
 		if profileName == "" {
-			return fmt.Errorf("profile name not provided. Try adding profile name like '" + afcfg.AppNameConfig + " credential-process --profile <profile-name>'")
+			return fmt.Errorf("profile name not provided. Try adding profile name like '%s credential-process --profile <profile-name>'", afcfg.AppNameConfig)
 		}
 
 		// if matches then do nth.
@@ -147,5 +147,5 @@ func validateCredentialProcess(arg string, awsProfileName string) error {
 		return fmt.Errorf("unmatched profile names. The profile name '%s' provided to '"+afcfg.AppNameConfig+" credential-process' does not match AWS profile name '%s'", profileName, awsProfileName)
 	}
 
-	return fmt.Errorf("unable to parse 'credential_process'. Looks like your credential_process isn't configured correctly. \n You need to add '" + afcfg.AppNameConfig + " credential-process --profile <profile-name>'")
+	return fmt.Errorf("unable to parse 'credential_process'. Looks like your credential_process isn't configured correctly. \n You need to add '%s credential-process --profile <profile-name>'", afcfg.AppNameConfig)
 }

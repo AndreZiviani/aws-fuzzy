@@ -141,7 +141,7 @@ func (p *TGRoutes) Execute(ctx context.Context) error {
 	if err != nil {
 		fmt.Printf("failed to initialize tracing, %s\n", err)
 	}
-	defer closer.Close()
+	defer func() { _ = closer.Close() }()
 
 	tracer := opentracing.GlobalTracer()
 	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "tgroute chart")
@@ -204,7 +204,5 @@ func (p *TGRoutes) Execute(ctx context.Context) error {
 		panic(err)
 	}
 
-	page.Render(io.MultiWriter(f))
-
-	return err
+	return page.Render(io.MultiWriter(f))
 }

@@ -134,6 +134,9 @@ func GetTransitGatewayAttachmentsByTG(ctx context.Context, clients map[string]ma
 			return nil, err // TODO
 		}
 		client, err := GetEC2Client(ctx, clients, profile.Name, &attachmentARN.Region)
+		if err != nil {
+			return nil, err
+		}
 
 		if attach.ResourceType == ec2types.TransitGatewayAttachmentResourceTypeVpc {
 			vpc, err := client.DescribeVpcs(ctx, &ec2.DescribeVpcsInput{
@@ -208,6 +211,9 @@ func DescribeTransitGatewayRegistrationsFromARN(ctx context.Context, transitGate
 		}
 
 		attachments, err := GetTransitGatewayAttachmentsByTG(ctx, clients, arn)
+		if err != nil {
+			return nil, err
+		}
 
 		// get transit gateway Name tag
 		tginfo, _ := DescribeTransitGateway(ctx, client, &arn.Resource)

@@ -3,7 +3,6 @@ package ssm_plugin
 import (
 	//	"embed"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -60,13 +59,13 @@ func ExtractAssets() (string, error) {
 	info, err := os.Stat(pluginPath)
 
 	if os.IsNotExist(err) {
-		err := ioutil.WriteFile(pluginPath, plugin, 0755)
+		err := os.WriteFile(pluginPath, plugin, 0755)
 		return pluginPath, err
 	}
 
 	if int(info.Size()) != len(plugin) {
 		// extract or update the ssm-plugin
-		err := ioutil.WriteFile(pluginPath, plugin, 0755)
+		err := os.WriteFile(pluginPath, plugin, 0755)
 		return "", err
 	}
 
@@ -93,7 +92,7 @@ func RunPlugin(args ...string) error {
 			select {
 			case <-sigs:
 			case <-done:
-				break
+				return
 			}
 		}
 	}()

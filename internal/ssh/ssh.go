@@ -37,7 +37,7 @@ func (p *Ssh) DoSsh(ip string) {
 	cmd.Stdout = os.Stdout
 	cmd.Stdin = os.Stdin
 	cmd.Stderr = os.Stderr
-	cmd.Run()
+	_ = cmd.Run()
 }
 
 func (p *Ssh) GetInstances(ctx context.Context) (*ec2.DescribeInstancesOutput, error) {
@@ -89,9 +89,9 @@ func (p *Ssh) Execute(ctx context.Context) error {
 
 	closer, err := tracing.InitTracing()
 	if err != nil {
-		return fmt.Errorf("failed to initialize tracing, %s\n", err)
+		return fmt.Errorf("failed to initialize tracing, %s", err)
 	}
-	defer closer.Close()
+	defer func() { _ = closer.Close() }()
 
 	tracer := opentracing.GlobalTracer()
 	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssh")

@@ -142,7 +142,7 @@ func Command() *cli.Command {
 	}
 
 	config := afconfig.NewDefaultConfig()
-	config.SetupConfigFolder()
+	_ = config.SetupConfigFolder()
 
 	return &command
 }

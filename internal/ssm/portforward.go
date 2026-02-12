@@ -50,7 +50,7 @@ func (p *PortForward) DoPortForward(ctx context.Context, id, local, host, remote
 		},
 		Target: &id,
 	}
-	inputJson, err := json.Marshal(input)
+	inputJson, _ := json.Marshal(input)
 
 	ssmclient := awsssm.NewFromConfig(cfg)
 
@@ -81,7 +81,7 @@ func (p *PortForward) DoPortForward(ctx context.Context, id, local, host, remote
 	*/
 
 	// for now we have to use the embeded the binary
-	ssm_plugin.RunPlugin(
+	_ = ssm_plugin.RunPlugin(
 		string(sessionJson),
 		p.Region,
 		"StartSession",
@@ -101,7 +101,7 @@ func (p *PortForward) Execute(ctx context.Context) error {
 	if err != nil {
 		fmt.Printf("failed to initialize tracing, %s\n", err)
 	}
-	defer closer.Close()
+	defer func() { _ = closer.Close() }()
 
 	tracer := opentracing.GlobalTracer()
 	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssm")

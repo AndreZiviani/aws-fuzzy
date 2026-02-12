@@ -38,9 +38,9 @@ func New(profile, account, region, selectFilter, filter, service, serviceType st
 func (p *Config) Execute(ctx context.Context) error {
 	closer, err := tracing.InitTracing()
 	if err != nil {
-		return fmt.Errorf("failed to initialize tracing, %s\n", err)
+		return fmt.Errorf("failed to initialize tracing, %s", err)
 	}
-	defer closer.Close()
+	defer func() { _ = closer.Close() }()
 
 	tracer := opentracing.GlobalTracer()
 	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "config")
@@ -127,7 +127,7 @@ func (p *Config) QueryConfig(ctx context.Context) ([]string, error) {
 	}
 	query := fmt.Sprintf("SELECT %s WHERE %s %s", p.Select, filter, accountFilter)
 
-	spanQuery, tmpctx := opentracing.StartSpanFromContext(ctx, "configquery")
+	spanQuery, _ := opentracing.StartSpanFromContext(ctx, "configquery")
 	configPag := awsconfig.NewSelectAggregateResourceConfigPaginator(
 		configclient,
 		&awsconfig.SelectAggregateResourceConfigInput{

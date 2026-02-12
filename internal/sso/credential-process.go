@@ -35,7 +35,7 @@ func (p *CredentialProcess) Execute(ctx context.Context) error {
 	if err != nil {
 		fmt.Printf("failed to initialize tracing, %s\n", err)
 	}
-	defer closer.Close()
+	defer func() { _ = closer.Close() }()
 
 	tracer := opentracing.GlobalTracer()
 	spanSso, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssocredentialprocesscmd")
@@ -59,7 +59,7 @@ func (p *CredentialProcess) Execute(ctx context.Context) error {
 
 	jsonOut, err := json.Marshal(out)
 	if err != nil {
-		return fmt.Errorf("marshalling session credentials\n")
+		return fmt.Errorf("marshalling session credentials")
 	}
 
 	fmt.Println(string(jsonOut))

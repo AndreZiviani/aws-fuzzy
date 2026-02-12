@@ -243,7 +243,7 @@ func tui(instancesOutput *ec2.DescribeInstancesOutput) (*Instance, error) {
 
 	if t.selected == nil {
 		// user aborted the selection (ctrl+c?)
-		return nil, fmt.Errorf("Aborting by user request\n")
+		return nil, fmt.Errorf("aborting by user request")
 	}
 
 	return t.selected, nil

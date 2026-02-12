@@ -12,8 +12,6 @@ import (
 	"github.com/AndreZiviani/aws-fuzzy/internal/securestorage"
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/common-fate/clio"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -40,9 +38,9 @@ func (p *Login) LoadProfiles() {
 func (p *Login) Execute(ctx context.Context) error {
 	closer, err := tracing.InitTracing()
 	if err != nil {
-		return fmt.Errorf("failed to initialize tracing, %s\n", err)
+		return fmt.Errorf("failed to initialize tracing, %s", err)
 	}
-	defer closer.Close()
+	defer func() { _ = closer.Close() }()
 
 	tracer := opentracing.GlobalTracer()
 	spanSso, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssologincmd")
@@ -120,7 +118,7 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 	}
 
 	if p.NoCache {
-		credstore.SecureStorage.Clear(profile.Name)
+		_ = credstore.SecureStorage.Clear(profile.Name)
 	} else if credstore.SecureStorage.Retrieve(profile.Name, &creds) == nil {
 		// return cached credentials
 
@@ -129,7 +127,7 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 			return &creds, nil
 		}
 
-		credstore.SecureStorage.Clear(profile.Name)
+		_ = credstore.SecureStorage.Clear(profile.Name)
 
 		return p.GetCredentials(ctx)
 	}
@@ -170,7 +168,7 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 	}
 
 	// cache credentials
-	credstore.SecureStorage.Store(profile.Name, creds)
+	_ = credstore.SecureStorage.Store(profile.Name, creds)
 
 	return &creds, nil
 
@@ -198,7 +196,7 @@ func (p *Login) AssumeRoleWithCreds(ctx context.Context, parentcreds *aws.Creden
 
 	creds := awsprofile.TypeCredsToAwsCreds(*session.Credentials)
 	credstore := securestorage.NewSecureSSOTokenStorage()
-	credstore.SecureStorage.Store(profile.Name, creds)
+	_ = credstore.SecureStorage.Store(profile.Name, creds)
 
 	return creds, err
 
@@ -218,7 +216,7 @@ func (p *Login) LoginMFA(ctx context.Context) (aws.Credentials, error) {
 	if len(profile.AWSConfig.SourceProfileName) > 0 {
 		// check if we have cached credentials for source profile
 		credstore := securestorage.NewSecureSSOTokenStorage()
-		credstore.SecureStorage.Retrieve(profile.AWSConfig.SourceProfileName, &creds)
+		_ = credstore.SecureStorage.Retrieve(profile.AWSConfig.SourceProfileName, &creds)
 	}
 
 	cfg, _ := NewAwsConfig(ctx, &profile.AWSConfig.Credentials)
@@ -274,54 +272,9 @@ func (p *Login) checkExpiredCreds(ctx context.Context) {
 
 	if err != nil {
 		// remove credentials from env var if expired
-		os.Unsetenv("AWS_SECURITY_TOKEN")
-		os.Unsetenv("AWS_SECRET_ACCESS_KEY")
-		os.Unsetenv("AWS_SESSION_TOKEN")
-		os.Unsetenv("AWS_ACCESS_KEY_ID")
+		_ = os.Unsetenv("AWS_SECURITY_TOKEN")
+		_ = os.Unsetenv("AWS_SECRET_ACCESS_KEY")
+		_ = os.Unsetenv("AWS_SESSION_TOKEN")
+		_ = os.Unsetenv("AWS_ACCESS_KEY_ID")
 	}
-}
-
-func (p *Login) oidcUrl(ctx context.Context) error {
-	p.LoadProfiles()
-	profile, err := p.GetProfile(p.Profile)
-	if err != nil {
-		return err
-	}
-
-	cfg, _ := NewAwsConfig(ctx, nil, config.WithRegion(profile.AWSConfig.SSORegion))
-	ssooidcClient := ssooidc.NewFromConfig(cfg)
-	register, err := ssooidcClient.RegisterClient(ctx, &ssooidc.RegisterClientInput{
-		ClientName: aws.String("granted-cli-client"),
-		ClientType: aws.String("public"),
-		Scopes:     []string{"sso-portal:*"},
-	})
-	if err != nil {
-		return err
-	}
-
-	// authorize your device using the client registration response
-	deviceAuth, err := ssooidcClient.StartDeviceAuthorization(ctx, &ssooidc.StartDeviceAuthorizationInput{
-
-		ClientId:     register.ClientId,
-		ClientSecret: register.ClientSecret,
-		StartUrl:     aws.String(profile.AWSConfig.SSOStartURL),
-	})
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(aws.ToString(deviceAuth.VerificationUriComplete))
-	token, err := awsprofile.PollToken(ctx, ssooidcClient, *register.ClientSecret, *register.ClientId, *deviceAuth.DeviceCode, awsprofile.PollingConfig{CheckInterval: time.Second * 2, TimeoutAfter: time.Minute * 2})
-	if err != nil {
-		return err
-	}
-
-	newSSOToken := securestorage.SSOToken{AccessToken: *token.AccessToken, Expiry: time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)}
-
-	secureSSOTokenStorage := securestorage.NewSecureSSOTokenStorage()
-
-	ssoTokenKey := profile.AWSConfig.SSOStartURL
-	secureSSOTokenStorage.StoreSSOToken(ssoTokenKey, newSSOToken)
-
-	return nil
 }

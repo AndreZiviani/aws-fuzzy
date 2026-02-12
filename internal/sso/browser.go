@@ -32,10 +32,10 @@ func (p *Browser) Execute(ctx context.Context) error {
 	if err != nil {
 		fmt.Printf("failed to initialize tracing, %s\n", err)
 	}
-	defer closer.Close()
+	defer func() { _ = closer.Close() }()
 
 	tracer := opentracing.GlobalTracer()
-	spanSso, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssobrowsercmd")
+	spanSso, _ := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssobrowsercmd")
 	defer spanSso.Finish()
 
 	withStdio := survey.WithStdio(os.Stdin, os.Stderr, os.Stderr)
@@ -53,7 +53,7 @@ func (p *Browser) Execute(ctx context.Context) error {
 			return err
 		}
 
-		err, browserKey, browserPath := p.GetBrowserSelection(withStdio, browser)
+		browserKey, browserPath, err := p.GetBrowserSelection(withStdio, browser)
 		if err != nil {
 			return err
 		}
@@ -90,7 +90,7 @@ func (p *Browser) Execute(ctx context.Context) error {
 				return err
 			}
 
-			err, browserKey, browserPath = p.GetBrowserSelection(withStdio, ssoBrowser)
+			browserKey, browserPath, err = p.GetBrowserSelection(withStdio, ssoBrowser)
 			if err != nil {
 				return err
 			}
@@ -110,7 +110,7 @@ func (p *Browser) Execute(ctx context.Context) error {
 
 }
 
-func (p *Browser) GetBrowserSelection(stdio survey.AskOpt, browserName string) (error, string, string) {
+func (p *Browser) GetBrowserSelection(stdio survey.AskOpt, browserName string) (string, string, error) {
 	var browserPath string
 	browserKey := gbrowser.GetBrowserKey(browserName)
 	title := cases.Title(language.AmericanEnglish)
@@ -130,7 +130,7 @@ func (p *Browser) GetBrowserSelection(stdio survey.AskOpt, browserName string) (
 				clio.NewLine()
 				err := testable.AskOne(&bpIn, &customBrowserPath, stdio)
 				if err != nil {
-					return err, "", ""
+					return "", "", err
 				}
 				if _, err := os.Stat(customBrowserPath); err == nil {
 					validPath = true
@@ -144,10 +144,10 @@ func (p *Browser) GetBrowserSelection(stdio survey.AskOpt, browserName string) (
 		if browserKey == gbrowser.FirefoxKey {
 			err := gbrowser.RunFirefoxExtensionPrompts(browserPath, browserName)
 			if err != nil {
-				return err, "", ""
+				return "", "", err
 			}
 		}
 	}
 
-	return nil, browserKey, browserPath
+	return browserKey, browserPath, nil
 }

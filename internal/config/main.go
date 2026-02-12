@@ -55,7 +55,7 @@ func Command() *cli.Command {
 				if serviceType != "%" {
 					if service, ok := AwsServices[c.Command.Name]; ok {
 						if !contains(service.Types, serviceType) {
-							return fmt.Errorf("Could not find type '%s' for service '%s'", serviceType, service.Name)
+							return fmt.Errorf("could not find type '%s' for service '%s'", serviceType, service.Name)
 						}
 					}
 				}

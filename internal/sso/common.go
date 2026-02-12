@@ -2,7 +2,6 @@ package sso
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/AndreZiviani/aws-fuzzy/internal/awsprofile"
@@ -30,7 +29,7 @@ func NewAwsConfig(ctx context.Context, creds *aws.Credentials, opts ...func(*con
 }
 
 func (p *Login) GetProfile(profile string) (*awsprofile.Profile, error) {
-	p.profiles.LoadInitialisedProfile(context.TODO(), "default")
+	_, _ = p.profiles.LoadInitialisedProfile(context.TODO(), "default")
 	return p.profiles.LoadInitialisedProfile(context.TODO(), profile)
 }
 
@@ -49,7 +48,7 @@ func (p *Login) GetProfileFromID(id string) (*awsprofile.Profile, error) {
 		}
 	}
 
-	return nil, errors.New(fmt.Sprintf("could not find a profile with account id %s!", id))
+	return nil, fmt.Errorf("could not find a profile with account id %s", id)
 }
 
 func (p *Login) PrintCredentials(creds *aws.Credentials) {

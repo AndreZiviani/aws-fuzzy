@@ -35,12 +35,13 @@ func NewConfigure(verbose bool) *Configure {
 }
 
 func (p *Configure) GetAccountAccess(ctx context.Context, startURL string, region string) (map[string]AwsProfile, error) {
-	cfg, err := NewAwsConfig(ctx, nil)
+	cfg, _ := NewAwsConfig(ctx, nil)
 	ssoclient := sso.NewFromConfig(cfg)
 
 	secureSSOTokenStorage := securestorage.NewSecureSSOTokenStorage()
 	ssoToken := secureSSOTokenStorage.GetValidSSOToken(ctx, startURL)
 	if ssoToken == nil {
+		var err error
 		ssoToken, err = awsprofile.SSODeviceCodeFlowFromStartUrl(ctx, cfg, startURL, startURL, false)
 		if err != nil {
 			return nil, err
@@ -121,16 +122,16 @@ func (p *Configure) ConfigureProfiles(ctx context.Context) error {
 
 	fmt.Print("SSO start url: ")
 	startURL, _ := reader.ReadString('\n')
-	startURL = strings.Replace(startURL, "\n", "", -1)
+	startURL = strings.ReplaceAll(startURL, "\n", "")
 
 	fmt.Print("SSO region: ")
 	region, _ := reader.ReadString('\n')
-	region = strings.Replace(region, "\n", "", -1)
+	region = strings.ReplaceAll(region, "\n", "")
 
-	profiles, err := p.GetAccountAccess(ctx, startURL, region)
+	profiles, _ := p.GetAccountAccess(ctx, startURL, region)
 
 	// Save complete profile config
-	err = WriteSsoProfiles(profiles)
+	err := WriteSsoProfiles(profiles)
 	if err != nil {
 		return err
 	}
@@ -147,13 +148,13 @@ func CopyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 
 	out, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 
 	if _, err = io.Copy(out, in); err != nil {
 		return err
@@ -194,7 +195,7 @@ func WriteSsoProfiles(profiles map[string]AwsProfile) error {
 		fmt.Printf("failed to write SSO profiles, %s\n", err)
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	_, err = c.WriteTo(f)
 	if err != nil {
@@ -210,7 +211,7 @@ func (p *Configure) Execute(ctx context.Context) error {
 	if err != nil {
 		fmt.Printf("failed to initialize tracing, %s\n", err)
 	}
-	defer closer.Close()
+	defer func() { _ = closer.Close() }()
 
 	tracer := opentracing.GlobalTracer()
 	spanSso, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssoconfigure")
