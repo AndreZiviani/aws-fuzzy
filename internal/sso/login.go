@@ -83,95 +83,58 @@ func (p *Login) GetCredentials(ctx context.Context) (*aws.Credentials, error) {
 
 	p.LoadProfiles()
 
-	var creds aws.Credentials
-	var ssoTokenKey, startURL string
-
 	profile, err := p.GetProfile(p.Profile)
 	if err != nil {
 		return nil, err
 	}
 
-	cfg, _ := NewAwsConfig(ctx, nil)
-
-	if profile.AWSConfig.SSOSession != nil {
-		ssoTokenKey = profile.AWSConfig.SSOSession.Name
-		startURL = profile.AWSConfig.SSOSession.SSOStartURL
-		cfg.Region = profile.AWSConfig.SSOSession.SSORegion
-	} else {
-		ssoTokenKey = profile.AWSConfig.SSOStartURL
-		startURL = profile.AWSConfig.SSOStartURL
-		cfg.Region = profile.AWSConfig.SSORegion
-	}
-	// if profile == nil {...
-	// prompt for profile using fzf
-
 	credstore := securestorage.NewSecureSSOTokenStorage()
 
-	cachedToken := credstore.GetValidSSOToken(ctx, ssoTokenKey)
-	if p.NoCache || cachedToken == nil {
-		newSSOToken, err := awsprofile.SSOLoginFlow(ctx, cfg, startURL, profile.Name, p.Url)
-		if err != nil {
-			return &aws.Credentials{}, err
-		}
-
-		credstore.StoreSSOToken(ssoTokenKey, *newSSOToken)
-	}
-
+	// Check cached role credentials (unless NoCache)
 	if p.NoCache {
 		_ = credstore.SecureStorage.Clear(profile.Name)
-	} else if credstore.SecureStorage.Retrieve(profile.Name, &creds) == nil {
-		// return cached credentials
-
-		// check if credentials are expired
-		if creds.HasKeys() && !creds.Expired() {
-			return &creds, nil
+	} else {
+		var creds aws.Credentials
+		if credstore.SecureStorage.Retrieve(profile.Name, &creds) == nil {
+			if creds.HasKeys() && !creds.Expired() {
+				return &creds, nil
+			}
+			_ = credstore.SecureStorage.Clear(profile.Name)
 		}
 
-		_ = credstore.SecureStorage.Clear(profile.Name)
-
-		return p.GetCredentials(ctx)
-	}
-
-	// we dont have cached credentials for this profile
-
-	if len(profile.Parents) > 0 {
-		// this profile uses a parent profile, check if we have cached credentials for that
-		err := credstore.SecureStorage.Retrieve(profile.Parents[0].Name, &creds)
-		if err == nil {
-			// yes we have
-			creds, err = p.AssumeRoleWithCreds(ctx, &creds)
-			if err == nil {
-				return &creds, err
+		// Check parent profile cached credentials
+		if len(profile.Parents) > 0 {
+			var parentCreds aws.Credentials
+			if credstore.SecureStorage.Retrieve(profile.Parents[0].Name, &parentCreds) == nil {
+				creds, err := p.AssumeRoleWithCreds(ctx, &parentCreds)
+				if err == nil {
+					return &creds, nil
+				}
+				clio.Debugf("failed to use cached parent credentials: %s", err)
 			}
-
-			fmt.Fprintf(os.Stderr, "Something went wrong... Trying again. Error:\n%s\n", err)
 		}
 	}
 
 	p.AskAuth()
-
-	// check if we have expired credential set in env vars
 	p.checkExpiredCreds(ctx)
 
-	fmt.Fprintf(os.Stderr, "Could not find cached credentials, refreshing...\n")
+	clio.Infof("Could not find cached credentials, refreshing...")
 
-	if profile.ProfileType == "AWS_IAM" && profile.AWSConfig.MFASerial != "" {
-		// IAM profile with MFA
+	// Get fresh credentials — AssumeTerminal handles SSO token management internally
+	var creds aws.Credentials
+	if profile.ProfileType == awsprofile.ProfileTypeIAM && profile.AWSConfig.MFASerial != "" {
 		creds, err = p.LoginMFA(ctx)
 	} else {
-		// Everything else
 		creds, err = profile.AssumeTerminal(ctx, awsprofile.ConfigOpts{Duration: time.Hour, PrintOnly: p.Url})
 	}
-
 	if err != nil {
 		return nil, err
 	}
 
-	// cache credentials
+	// cache role credentials
 	_ = credstore.SecureStorage.Store(profile.Name, creds)
 
 	return &creds, nil
-
 }
 
 func (p *Login) AssumeRoleWithCreds(ctx context.Context, parentcreds *aws.Credentials) (aws.Credentials, error) {
