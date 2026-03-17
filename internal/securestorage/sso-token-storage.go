@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
+	ssooidctypes "github.com/aws/aws-sdk-go-v2/service/ssooidc/types"
 	"github.com/common-fate/clio"
 	"github.com/pkg/errors"
 )
@@ -77,7 +78,7 @@ func (s *SSOTokensSecureStorage) GetValidSSOToken(ctx context.Context, profileKe
 	}
 
 	if !t.RegistrationExpiresAt.IsZero() && t.RegistrationExpiresAt.Before(now) {
-		clio.Warnf("SSO client registration has expired, a new device authorization will be required")
+		clio.Warnf("SSO client registration has expired (after ~90 days). A full re-registration and device authorization will be required.")
 		if !isExpired {
 			return &t
 		}
@@ -114,9 +115,14 @@ func (s *SSOTokensSecureStorage) GetValidSSOToken(ctx context.Context, profileKe
 		Scope:        []string{ScopeAccountAccess},
 	})
 	if err != nil {
-		clio.Errorf("error refreshing AWS IAM Identity Center token: %s", err.Error())
+		var invalidGrant *ssooidctypes.InvalidGrantException
+		if errors.As(err, &invalidGrant) {
+			clio.Warnf("Your IAM Identity Center portal session has expired. Re-authentication required.")
+			clio.Warnf("To reduce login frequency, ask your AWS admin to increase the portal session duration in IAM Identity Center > Settings > Authentication (max 90 days).")
+		} else {
+			clio.Errorf("error refreshing AWS IAM Identity Center token: %s", err.Error())
+		}
 		if !isExpired {
-			// refresh failed but token is still valid; use it
 			return &t
 		}
 		return nil
