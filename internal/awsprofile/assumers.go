@@ -12,6 +12,11 @@ const (
 	ProfileTypeSSO               = "AWS_SSO"
 	ProfileTypeIAM               = "AWS_IAM"
 	ProfileTypeCredentialProcess = "AWS_CREDENTIAL_PROCESS"
+
+	// OAuth 2.0 grant types for SSO OIDC
+	GrantTypeDeviceCode   = "urn:ietf:params:oauth:grant-type:device_code"
+	GrantTypeAuthCode     = "authorization_code"
+	GrantTypeRefreshToken = "refresh_token"
 )
 
 // Added support for optional pass through args on proxy sso provider

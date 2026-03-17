@@ -142,6 +142,56 @@ func (c *Profile) SSOLogin(ctx context.Context, configOpts ConfigOpts) (aws.Cred
 
 }
 
+// getOrRegisterClient returns a cached client registration if available, or registers a new one.
+func getOrRegisterClient(ctx context.Context, ssooidcClient *ssooidc.Client, cfg aws.Config, startUrl string, grantTypes []string) (*securestorage.ClientRegistration, error) {
+	regStore := securestorage.NewSecureClientRegistrationStorage()
+	cached := regStore.GetValidRegistration(startUrl)
+	if cached != nil {
+		clio.Debugf("using cached SSO client registration (expires %s)", cached.RegistrationExpiresAt.Format(time.RFC3339))
+		return cached, nil
+	}
+
+	register, err := ssooidcClient.RegisterClient(ctx, &ssooidc.RegisterClientInput{
+		ClientName: aws.String("aws-fuzzy"),
+		ClientType: aws.String("public"),
+		GrantTypes: grantTypes,
+		Scopes:     []string{securestorage.ScopeAccountAccess},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	reg := &securestorage.ClientRegistration{
+		ClientID:              aws.ToString(register.ClientId),
+		ClientSecret:          aws.ToString(register.ClientSecret),
+		RegistrationExpiresAt: time.Unix(register.ClientSecretExpiresAt, 0),
+		Region:                cfg.Region,
+		AuthorizationEndpoint: aws.ToString(register.AuthorizationEndpoint),
+		TokenEndpoint:         aws.ToString(register.TokenEndpoint),
+	}
+
+	regStore.StoreRegistration(startUrl, *reg)
+	return reg, nil
+}
+
+// openBrowserForSSO opens the given URL in the user's browser (custom or default).
+func openBrowserForSSO(afcfg afconfig.Config, url, profile string, printOnly bool) error {
+	if afcfg.CustomSSOBrowserPath != "" {
+		cmd := exec.Command(afcfg.CustomSSOBrowserPath, url)
+		err := cmd.Start()
+		if err != nil {
+			clio.Debug(err.Error())
+		} else {
+			err = cmd.Process.Release()
+			if err != nil {
+				clio.Debug(err.Error())
+			}
+		}
+		return nil
+	}
+	return LaunchBrowser(url, profile, "sso", printOnly)
+}
+
 // SSODeviceCodeFlowFromStartUrl contains all the steps to complete a device code flow to retrieve an SSO token
 func SSODeviceCodeFlowFromStartUrl(ctx context.Context, cfg aws.Config, startUrl string, profile string, printOnly bool) (*securestorage.SSOToken, error) {
 	afcfg, err := afconfig.NewLoadedConfig()
@@ -151,56 +201,32 @@ func SSODeviceCodeFlowFromStartUrl(ctx context.Context, cfg aws.Config, startUrl
 
 	ssooidcClient := ssooidc.NewFromConfig(cfg)
 
-	register, err := ssooidcClient.RegisterClient(ctx, &ssooidc.RegisterClientInput{
-		ClientName: aws.String("aws-fuzzy"),
-		ClientType: aws.String("public"),
-		GrantTypes: []string{"urn:ietf:params:oauth:grant-type:device_code", "refresh_token"},
-		Scopes:     []string{"sso:account:access"},
-	})
+	reg, err := getOrRegisterClient(ctx, ssooidcClient, cfg, startUrl, []string{GrantTypeDeviceCode, GrantTypeRefreshToken})
 	if err != nil {
 		return nil, err
 	}
 
-	// authorize your device using the client registration response
 	deviceAuth, err := ssooidcClient.StartDeviceAuthorization(ctx, &ssooidc.StartDeviceAuthorizationInput{
-
-		ClientId:     register.ClientId,
-		ClientSecret: register.ClientSecret,
+		ClientId:     &reg.ClientID,
+		ClientSecret: &reg.ClientSecret,
 		StartUrl:     aws.String(startUrl),
 	})
 	if err != nil {
 		return nil, err
 	}
-	// trigger OIDC login. open browser to login. close tab once login is done. press enter to continue
+
 	url := aws.ToString(deviceAuth.VerificationUriComplete)
 	if !printOnly {
 		clio.Info("If the browser does not open automatically, please open this link:")
 		clio.Info(url)
 	}
 
-	if afcfg.CustomSSOBrowserPath != "" {
-		cmd := exec.Command(afcfg.CustomSSOBrowserPath, url)
-		err = cmd.Start()
-		if err != nil {
-			// fail silently
-			clio.Debug(err.Error())
-		} else {
-			// detach from this new process because it continues to run
-			err = cmd.Process.Release()
-			if err != nil {
-				// fail silently
-				clio.Debug(err.Error())
-			}
-		}
-	} else {
-		err = LaunchBrowser(url, profile, "sso", printOnly)
-		if err != nil {
-			return nil, err
-		}
+	if err := openBrowserForSSO(afcfg, url, profile, printOnly); err != nil {
+		return nil, err
 	}
 
 	clio.Info("Awaiting authentication in the browser...")
-	token, err := PollToken(ctx, ssooidcClient, *register.ClientSecret, *register.ClientId, *deviceAuth.DeviceCode, PollingConfig{CheckInterval: time.Second * 2, TimeoutAfter: time.Minute * 2})
+	token, err := PollToken(ctx, ssooidcClient, reg.ClientSecret, reg.ClientID, *deviceAuth.DeviceCode, PollingConfig{CheckInterval: time.Second * 2, TimeoutAfter: time.Minute * 2})
 	if err != nil {
 		return nil, err
 	}
@@ -208,9 +234,9 @@ func SSODeviceCodeFlowFromStartUrl(ctx context.Context, cfg aws.Config, startUrl
 	return &securestorage.SSOToken{
 		AccessToken:           aws.ToString(token.AccessToken),
 		Expiry:                time.Now().Add(time.Duration(token.ExpiresIn) * time.Second),
-		ClientID:              aws.ToString(register.ClientId),
-		ClientSecret:          aws.ToString(register.ClientSecret),
-		RegistrationExpiresAt: time.Unix(register.ClientSecretExpiresAt, 0),
+		ClientID:              reg.ClientID,
+		ClientSecret:          reg.ClientSecret,
+		RegistrationExpiresAt: reg.RegistrationExpiresAt,
 		Region:                cfg.Region,
 		RefreshToken:          token.RefreshToken,
 	}, nil
@@ -230,12 +256,11 @@ func PollToken(ctx context.Context, c *ssooidc.Client, clientSecret string, clie
 		time.Sleep(cfg.CheckInterval)
 
 		token, err := c.CreateToken(ctx, &ssooidc.CreateTokenInput{
-
 			ClientId:     &clientID,
 			ClientSecret: &clientSecret,
 			DeviceCode:   &deviceCode,
-			GrantType:    aws.String("urn:ietf:params:oauth:grant-type:device_code"),
-			Scope:        []string{"sso:account:access"},
+			GrantType:    aws.String(GrantTypeDeviceCode),
+			Scope:        []string{securestorage.ScopeAccountAccess},
 		})
 		var pendingAuth *ssooidctypes.AuthorizationPendingException
 		if err == nil {
