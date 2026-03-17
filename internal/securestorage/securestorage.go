@@ -156,7 +156,19 @@ func (s *SecureStorage) openKeyring() (keyring.Keyring, error) {
 
 	if cfg.Keyring != nil {
 		if cfg.Keyring.Backend != nil {
-			c.AllowedBackends = []keyring.BackendType{keyring.BackendType(*cfg.Keyring.Backend)}
+			desiredBackend := keyring.BackendType(*cfg.Keyring.Backend)
+			// Only restrict to the configured backend if it's actually available,
+			// otherwise fall back to all available backends (e.g., when CGO is
+			// disabled on macOS, the "keychain" backend isn't compiled in).
+			for _, b := range keyring.AvailableBackends() {
+				if b == desiredBackend {
+					c.AllowedBackends = []keyring.BackendType{desiredBackend}
+					break
+				}
+			}
+			if c.AllowedBackends == nil {
+				clio.Warnf("Configured keyring backend %q is not available (available: %v). Falling back to default.", *cfg.Keyring.Backend, keyring.AvailableBackends())
+			}
 		}
 		if cfg.Keyring.KeychainName != nil {
 			c.KeychainName = *cfg.Keyring.KeychainName
