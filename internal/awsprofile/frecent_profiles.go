@@ -47,7 +47,7 @@ func UpdateFrecencyCache(selectedProfile string) {
 // this method returns a FrecentProfiles pointer which should be used after selecting a profile to update the cache, it will also remove any entries which no longer exist in the aws config
 func (p *Profiles) GetFrecentProfiles() (*FrecentProfiles, []string) {
 	names := []string{}
-	namesMap := make(map[string]string)
+	namesMap := make(map[string]struct{})
 	fr, err := frecency.Load(frecencyStoreKey)
 	if err != nil {
 		clio.Debug(errors.Wrap(err, "loading aws_profiles_frecency frecency store").Error())
@@ -59,7 +59,7 @@ func (p *Profiles) GetFrecentProfiles() (*FrecentProfiles, []string) {
 		e := entry.Entry.(string)
 		if p.HasProfile(e) {
 			names = append(names, e)
-			namesMap[e] = e
+			namesMap[e] = struct{}{}
 		} else {
 			namesToRemoveFromFrecency = append(namesToRemoveFromFrecency, e)
 		}

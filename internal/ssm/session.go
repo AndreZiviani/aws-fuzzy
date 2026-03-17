@@ -41,7 +41,7 @@ func (p *Session) DoSsm(ctx context.Context, id string) error {
 
 	input := &awsssm.StartSessionInput{
 		Target:       &id,
-		DocumentName: aws.String("AWS-StartInteractiveCommand"),
+		DocumentName: aws.String(docInteractiveCommand),
 		Parameters: map[string][]string{
 			"command": []string{p.Shell},
 		},

@@ -13,6 +13,12 @@ import (
 	"github.com/opentracing/opentracing-go/log"
 )
 
+const (
+	docPortForwardRemoteHost = "AWS-StartPortForwardingSessionToRemoteHost"
+	docInteractiveCommand    = "AWS-StartInteractiveCommand"
+)
+
+
 func GetInstances(ctx context.Context, cfg aws.Config) (*ec2.DescribeInstancesOutput, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ssmgetinstances")
 	defer span.Finish()

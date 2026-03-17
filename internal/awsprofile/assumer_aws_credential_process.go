@@ -90,7 +90,7 @@ func (cpa *CredentialProcessAssumer) AssumeConsole(ctx context.Context, c *Profi
 
 // A unique key which identifies this assumer e.g AWS-SSO or GOOGLE-AWS-AUTH
 func (cpa *CredentialProcessAssumer) Type() string {
-	return "AWS_CREDENTIAL_PROCESS"
+	return ProfileTypeCredentialProcess
 }
 
 // inspect for any credential processes with the saml2aws tool

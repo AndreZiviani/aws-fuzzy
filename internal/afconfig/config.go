@@ -54,13 +54,7 @@ func (c Config) SetupConfigFolder() error {
 	if err != nil {
 		return err
 	}
-	if _, err := os.Stat(configFolder); os.IsNotExist(err) {
-		err := os.Mkdir(configFolder, 0700)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return os.MkdirAll(configFolder, 0700)
 }
 
 func (c Config) ConfigFolder() (string, error) {

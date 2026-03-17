@@ -8,6 +8,12 @@ import (
 	"gopkg.in/ini.v1"
 )
 
+const (
+	ProfileTypeSSO               = "AWS_SSO"
+	ProfileTypeIAM               = "AWS_IAM"
+	ProfileTypeCredentialProcess = "AWS_CREDENTIAL_PROCESS"
+)
+
 // Added support for optional pass through args on proxy sso provider
 // When using a sso provider adding pass through flags can be acheived by adding the -pass-through or -pt flag
 // EG. assume role-a -pt --mode -pt gui (Run the proxy login with a gui rather than in cli. Example taken from aws-azure-login)

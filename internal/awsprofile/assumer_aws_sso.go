@@ -34,7 +34,7 @@ func (asa *AwsSsoAssumer) AssumeConsole(ctx context.Context, c *Profile, configO
 }
 
 func (asa *AwsSsoAssumer) Type() string {
-	return "AWS_SSO"
+	return ProfileTypeSSO
 }
 
 // Matches the profile type on whether it is an sso profile by checking for ssoaccountid.

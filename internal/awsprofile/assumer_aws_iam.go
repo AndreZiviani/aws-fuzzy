@@ -75,7 +75,7 @@ func (aia *AwsIamAssumer) AssumeConsole(ctx context.Context, c *Profile, configO
 
 // A unique key which identifies this assumer e.g AWS-SSO or GOOGLE-AWS-AUTH
 func (aia *AwsIamAssumer) Type() string {
-	return "AWS_IAM"
+	return ProfileTypeIAM
 }
 
 // Matches the profile type on whether it is not an sso profile.

@@ -189,9 +189,10 @@ func (p *Profiles) loadDefaultCredentialsFile() error {
 	return nil
 }
 
+var illegalProfileNameCharacters = regexp.MustCompile(`[\\[\];'" ]`)
+
 // Helper function which returns true if provided profile name string does not contain illegal characters
 func IsLegalProfileName(name string) bool {
-	illegalProfileNameCharacters := regexp.MustCompile(`[\\[\];'" ]`)
 	illegalChars := `\][;'"` // These characters break the config file format and should not be usable for profile names
 	if illegalProfileNameCharacters.MatchString(name) {
 		clio.Warnf("The profile %s cannot be loaded because the name contains one or more of these characters '%s'", name, illegalChars)
@@ -233,7 +234,7 @@ func (p *Profiles) LoadInitialisedProfile(ctx context.Context, profile string) (
 		}
 		pr.AWSConfig = *awsConfig
 		pr.Initialised = true
-		pr.ProfileType = "AWS_SSO"
+		pr.ProfileType = ProfileTypeSSO
 		return pr, nil
 	} else {
 		for _, v := range pr.RawConfig.Keys() {
@@ -245,7 +246,7 @@ func (p *Profiles) LoadInitialisedProfile(ctx context.Context, profile string) (
 				pr.AWSConfig = awsConfig
 				pr.AWSConfig.CredentialProcess = ""
 				pr.Initialised = true
-				pr.ProfileType = "AWS_IAM"
+				pr.ProfileType = ProfileTypeIAM
 				pr.HasSecureStorageIAMCredentials = true
 				return pr, nil
 			}
@@ -264,7 +265,7 @@ func (p *Profiles) LoadInitialisedProfile(ctx context.Context, profile string) (
 // located at default cache directory.
 func (p *Profile) InitWithPlainTextSSOToken(ctx context.Context, awsCred aws.Credentials) error {
 	p.Initialised = true
-	p.ProfileType = "AWS_SSO"
+	p.ProfileType = ProfileTypeSSO
 
 	cfg, err := config.LoadSharedConfigProfile(ctx, p.Name, func(lsco *config.LoadSharedConfigOptions) { lsco.ConfigFiles = []string{p.File} })
 	if err != nil {

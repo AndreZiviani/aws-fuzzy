@@ -40,7 +40,7 @@ func (p *PortForward) DoPortForward(ctx context.Context, id, local, host, remote
 		return err
 	}
 
-	docName := "AWS-StartPortForwardingSessionToRemoteHost" // https://us-east-1.console.aws.amazon.com/systems-manager/documents/AWS-StartPortForwardingSession/description?region=us-east-1
+	docName := docPortForwardRemoteHost
 	input := &awsssm.StartSessionInput{
 		DocumentName: &docName,
 		Parameters: map[string][]string{
