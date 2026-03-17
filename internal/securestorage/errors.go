@@ -1,5 +1,5 @@
 package securestorage
 
-import "github.com/pkg/errors"
+import "errors"
 
-var ErrCouldNotOpenKeyring error = errors.New("keyring not opened successfully")
+var ErrCouldNotOpenKeyring = errors.New("keyring not opened successfully")

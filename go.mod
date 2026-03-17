@@ -3,7 +3,6 @@ module github.com/AndreZiviani/aws-fuzzy
 go 1.25.3
 
 require (
-	github.com/99designs/keyring v1.2.2
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/AndreZiviani/fzf-wrapper/v2 v2.0.0-20251201155449-d5b0ebed2268
 	github.com/BurntSushi/toml v1.5.0
@@ -20,9 +19,11 @@ require (
 	github.com/aws/smithy-go v1.23.2
 	github.com/common-fate/clio v1.2.3
 	github.com/common-fate/granted v0.38.0
+	github.com/danieljoos/wincred v1.2.3
 	github.com/gdamore/tcell/v2 v2.13.1
 	github.com/gjbae1212/go-wraperror v0.7.0
 	github.com/go-echarts/go-echarts/v2 v2.3.3
+	github.com/godbus/dbus/v5 v5.2.2
 	github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pkg/errors v0.9.1
@@ -39,6 +40,7 @@ require (
 	connectrpc.com/connect v1.19.1 // indirect
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
+	github.com/99designs/keyring v1.2.2 // indirect
 	github.com/HdrHistogram/hdrhistogram-go v1.0.1 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
@@ -59,7 +61,6 @@ require (
 	github.com/common-fate/sdk v1.71.0 // indirect
 	github.com/common-fate/useragent v0.1.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
-	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/dvsekhvalnov/jose2go v1.8.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/gdamore/encoding v1.0.1 // indirect

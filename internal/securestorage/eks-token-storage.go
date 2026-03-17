@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/common-fate/clio"
-	"github.com/pkg/errors"
 )
 
 type EKSTokenSecureStorage struct {
@@ -48,7 +47,7 @@ func (s *EKSTokenSecureStorage) GetValidEKSToken(cacheKey string) (*EKSToken, er
 func (s *EKSTokenSecureStorage) StoreEKSToken(cacheKey string, token EKSToken) {
 	err := s.SecureStorage.Store(cacheKey, token)
 	if err != nil {
-		clio.Debugf("%s\n", errors.Wrap(err, "writing EKS token to credentials cache").Error())
+		clio.Debugf("writing EKS token to credentials cache: %s", err.Error())
 	}
 }
 
@@ -56,6 +55,6 @@ func (s *EKSTokenSecureStorage) StoreEKSToken(cacheKey string, token EKSToken) {
 func (s *EKSTokenSecureStorage) ClearEKSToken(cacheKey string) {
 	err := s.SecureStorage.Clear(cacheKey)
 	if err != nil {
-		clio.Debugf("%s\n", errors.Wrap(err, "clearing EKS token from the credentials cache").Error())
+		clio.Debugf("clearing EKS token from the credentials cache: %s", err.Error())
 	}
 }

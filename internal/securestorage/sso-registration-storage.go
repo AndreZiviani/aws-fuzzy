@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/common-fate/clio"
-	"github.com/pkg/errors"
 )
 
 // registrationExpiryBuffer is how early before expiry we consider a registration invalid,
@@ -56,7 +55,7 @@ func (s *ClientRegistrationSecureStorage) GetValidRegistration(key string) *Clie
 func (s *ClientRegistrationSecureStorage) StoreRegistration(key string, reg ClientRegistration) {
 	err := s.SecureStorage.Store(key, reg)
 	if err != nil {
-		clio.Debugf("%s\n", errors.Wrap(err, "writing SSO client registration to cache").Error())
+		clio.Debugf("writing SSO client registration to cache: %s", err.Error())
 	}
 }
 
@@ -64,6 +63,6 @@ func (s *ClientRegistrationSecureStorage) StoreRegistration(key string, reg Clie
 func (s *ClientRegistrationSecureStorage) ClearRegistration(key string) {
 	err := s.SecureStorage.Clear(key)
 	if err != nil {
-		clio.Debugf("%s\n", errors.Wrap(err, "clearing SSO client registration from cache").Error())
+		clio.Debugf("clearing SSO client registration from cache: %s", err.Error())
 	}
 }
