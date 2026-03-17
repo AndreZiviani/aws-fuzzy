@@ -37,8 +37,17 @@ type SSOToken struct {
 	RefreshToken          *string   `json:"refreshToken,omitempty"`
 }
 
+const (
+	// tokenRefreshBuffer is how early before expiry we attempt to refresh the token,
+	// avoiding failures at the expiry boundary.
+	tokenRefreshBuffer = 5 * time.Minute
+
+	// ScopeAccountAccess is the OAuth scope required for SSO account access and refresh tokens.
+	ScopeAccountAccess = "sso:account:access"
+)
+
 // GetValidSSOToken loads and potentially refreshes an AWS SSO access token from secure storage.
-// It returns nil if no token was found, or if it is expired
+// It returns nil if no token was found, or if it is expired and cannot be refreshed.
 func (s *SSOTokensSecureStorage) GetValidSSOToken(ctx context.Context, profileKey string) *SSOToken {
 	var t SSOToken
 	err := s.SecureStorage.Retrieve(profileKey, &t)
@@ -51,41 +60,45 @@ func (s *SSOTokensSecureStorage) GetValidSSOToken(ctx context.Context, profileKe
 		return nil
 	}
 	now := time.Now()
+	needsRefresh := t.Expiry.Before(now.Add(tokenRefreshBuffer))
 	isExpired := t.Expiry.Before(now)
 
-	if !isExpired {
-		// token is valid
+	if !needsRefresh {
+		// token is valid and not close to expiry
 		return &t
 	}
 
-	if t.RefreshToken == nil {
-		// can't refresh the token, so return nil
-		return nil
-	}
-
-	if *t.RefreshToken == "" {
-		// can't refresh the token, so return nil
+	if t.RefreshToken == nil || *t.RefreshToken == "" {
+		if !isExpired {
+			// token is still valid but we can't refresh it; return it as-is
+			return &t
+		}
 		return nil
 	}
 
 	if !t.RegistrationExpiresAt.IsZero() && t.RegistrationExpiresAt.Before(now) {
 		clio.Warnf("SSO client registration has expired, a new device authorization will be required")
+		if !isExpired {
+			return &t
+		}
 		return nil
 	}
 
-	// if we get here, we can attempt to refresh the token
+	// attempt to refresh the token
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		clio.Errorf("error loading default AWS config for token refresh: %s", err.Error())
-		// token is invalid
+		if !isExpired {
+			return &t
+		}
 		return nil
 	}
 
 	if t.Region == "" {
-		// if the region is not set, the AWS SSO OIDC client will make an invalid API call and will return an
-		// 'InvalidGrantException' error.
 		clio.Errorf("existing token had no SSO region set")
-		// token is invalid
+		if !isExpired {
+			return &t
+		}
 		return nil
 	}
 
@@ -98,13 +111,18 @@ func (s *SSOTokensSecureStorage) GetValidSSOToken(ctx context.Context, profileKe
 		ClientSecret: &t.ClientSecret,
 		GrantType:    aws.String("refresh_token"),
 		RefreshToken: t.RefreshToken,
-		Scope:        []string{"sso:account:access"},
+		Scope:        []string{ScopeAccountAccess},
 	})
 	if err != nil {
 		clio.Errorf("error refreshing AWS IAM Identity Center token: %s", err.Error())
-		// token is invalid
+		if !isExpired {
+			// refresh failed but token is still valid; use it
+			return &t
+		}
 		return nil
 	}
+
+	clio.Debugf("successfully refreshed IAM Identity Center access token")
 
 	newToken := SSOToken{
 		AccessToken:           *res.AccessToken,
