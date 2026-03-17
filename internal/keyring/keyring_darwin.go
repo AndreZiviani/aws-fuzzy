@@ -65,10 +65,15 @@ func (k macOSXKeychain) Set(service, username, password string) error {
 	// encode all passwords
 	password = base64EncodingPrefix + base64.StdEncoding.EncodeToString([]byte(password))
 
+	// Delete any existing item before creating a new one. Using -U (update) on
+	// an item created with different ACLs triggers a macOS keychain password
+	// prompt to "change access permissions". Creating fresh with -A avoids this.
+	_ = exec.Command(execPathKeychain, "delete-generic-password", "-s", service, "-a", username).Run()
+
 	out, err := exec.Command(
 		execPathKeychain,
 		"add-generic-password",
-		"-U",
+		"-A",
 		"-s", service,
 		"-a", username,
 		"-w", password,
