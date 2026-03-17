@@ -2,6 +2,7 @@ package awsprofile
 
 import (
 	"context"
+	"os"
 	"os/exec"
 	"time"
 
@@ -69,7 +70,7 @@ func (c *Profile) SSOLogin(ctx context.Context, configOpts ConfigOpts) (aws.Cred
 	cachedToken := secureSSOTokenStorage.GetValidSSOToken(ctx, ssoTokenKey)
 	var accessToken *string
 	if cachedToken == nil {
-		newSSOToken, err := SSODeviceCodeFlowFromStartUrl(ctx, *cfg, startURL, c.Name, configOpts.PrintOnly)
+		newSSOToken, err := SSOLoginFlow(ctx, *cfg, startURL, c.Name, configOpts.PrintOnly)
 		if err != nil {
 			return aws.Credentials{}, err
 		}
@@ -190,6 +191,24 @@ func openBrowserForSSO(afcfg afconfig.Config, url, profile string, printOnly boo
 		return nil
 	}
 	return LaunchBrowser(url, profile, "sso", printOnly)
+}
+
+// SSOLoginFlow tries PKCE authorization first, falling back to device code flow.
+// PKCE is the default since it's more secure and has better UX (no manual device code entry).
+// Fallback to device code happens when: printOnly mode, AWS_FUZZY_USE_DEVICE_CODE=true,
+// or PKCE flow fails (e.g., can't bind local port).
+func SSOLoginFlow(ctx context.Context, cfg aws.Config, startUrl string, profile string, printOnly bool) (*securestorage.SSOToken, error) {
+	useDeviceCode := os.Getenv("AWS_FUZZY_USE_DEVICE_CODE") == "true"
+
+	if !printOnly && !useDeviceCode {
+		token, err := SSOPKCEFlowFromStartUrl(ctx, cfg, startUrl, profile, printOnly)
+		if err == nil {
+			return token, nil
+		}
+		clio.Debugf("PKCE flow failed, falling back to device code: %s", err.Error())
+	}
+
+	return SSODeviceCodeFlowFromStartUrl(ctx, cfg, startUrl, profile, printOnly)
 }
 
 // SSODeviceCodeFlowFromStartUrl contains all the steps to complete a device code flow to retrieve an SSO token
