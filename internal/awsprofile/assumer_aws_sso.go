@@ -143,21 +143,51 @@ func (c *Profile) SSOLogin(ctx context.Context, configOpts ConfigOpts) (aws.Cred
 
 }
 
+// pkceCacheKeySuffix distinguishes PKCE client registrations from device code ones in the cache.
+const pkceCacheKeySuffix = ":pkce"
+
+// ClientRegistrationOpts holds PKCE-specific parameters for client registration.
+// When nil is passed to getOrRegisterClient, the registration is for device code flow.
+type ClientRegistrationOpts struct {
+	IssuerUrl    string
+	RedirectUris []string
+}
+
 // getOrRegisterClient returns a cached client registration if available, or registers a new one.
-func getOrRegisterClient(ctx context.Context, ssooidcClient *ssooidc.Client, cfg aws.Config, startUrl string, grantTypes []string) (*securestorage.ClientRegistration, error) {
+// PKCE and device code flows use separate cache keys to avoid conflicts, since PKCE registrations
+// require IssuerUrl and RedirectUris that device code registrations don't have.
+func getOrRegisterClient(ctx context.Context, ssooidcClient *ssooidc.Client, cfg aws.Config, startUrl string, grantTypes []string, opts *ClientRegistrationOpts) (*securestorage.ClientRegistration, error) {
 	regStore := securestorage.NewSecureClientRegistrationStorage()
-	cached := regStore.GetValidRegistration(startUrl)
+
+	// Use a separate cache key for PKCE registrations so they don't collide
+	// with device code registrations (which lack IssuerUrl/RedirectUris).
+	cacheKey := startUrl
+	if opts != nil && opts.IssuerUrl != "" {
+		cacheKey = startUrl + pkceCacheKeySuffix
+	}
+
+	cached := regStore.GetValidRegistration(cacheKey)
 	if cached != nil {
 		clio.Debugf("using cached SSO client registration (expires %s)", cached.RegistrationExpiresAt.Format(time.RFC3339))
 		return cached, nil
 	}
 
-	register, err := ssooidcClient.RegisterClient(ctx, &ssooidc.RegisterClientInput{
+	input := &ssooidc.RegisterClientInput{
 		ClientName: aws.String("aws-fuzzy"),
 		ClientType: aws.String("public"),
 		GrantTypes: grantTypes,
 		Scopes:     []string{securestorage.ScopeAccountAccess},
-	})
+	}
+	if opts != nil {
+		if opts.IssuerUrl != "" {
+			input.IssuerUrl = aws.String(opts.IssuerUrl)
+		}
+		if len(opts.RedirectUris) > 0 {
+			input.RedirectUris = opts.RedirectUris
+		}
+	}
+
+	register, err := ssooidcClient.RegisterClient(ctx, input)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +201,7 @@ func getOrRegisterClient(ctx context.Context, ssooidcClient *ssooidc.Client, cfg
 		TokenEndpoint:         aws.ToString(register.TokenEndpoint),
 	}
 
-	regStore.StoreRegistration(startUrl, *reg)
+	regStore.StoreRegistration(cacheKey, *reg)
 	return reg, nil
 }
 
@@ -196,16 +226,20 @@ func openBrowserForSSO(afcfg afconfig.Config, url, profile string, printOnly boo
 // SSOLoginFlow tries PKCE authorization first, falling back to device code flow.
 // PKCE is the default since it's more secure and has better UX (no manual device code entry).
 // Fallback to device code happens when: printOnly mode, AWS_FUZZY_USE_DEVICE_CODE=true,
-// or PKCE flow fails (e.g., can't bind local port).
+// headless environment detected, or PKCE flow fails (e.g., can't bind local port).
 func SSOLoginFlow(ctx context.Context, cfg aws.Config, startUrl string, profile string, printOnly bool) (*securestorage.SSOToken, error) {
 	useDeviceCode := os.Getenv("AWS_FUZZY_USE_DEVICE_CODE") == "true"
 
 	if !printOnly && !useDeviceCode {
-		token, err := SSOPKCEFlowFromStartUrl(ctx, cfg, startUrl, profile, printOnly)
-		if err == nil {
-			return token, nil
+		if IsHeadlessEnvironment() {
+			clio.Warn("Headless environment detected (SSH, container, or CI), using device code flow")
+		} else {
+			token, err := SSOPKCEFlowFromStartUrl(ctx, cfg, startUrl, profile)
+			if err == nil {
+				return token, nil
+			}
+			clio.Debugf("PKCE flow failed, falling back to device code: %s", err.Error())
 		}
-		clio.Debugf("PKCE flow failed, falling back to device code: %s", err.Error())
 	}
 
 	return SSODeviceCodeFlowFromStartUrl(ctx, cfg, startUrl, profile, printOnly)
@@ -220,7 +254,7 @@ func SSODeviceCodeFlowFromStartUrl(ctx context.Context, cfg aws.Config, startUrl
 
 	ssooidcClient := ssooidc.NewFromConfig(cfg)
 
-	reg, err := getOrRegisterClient(ctx, ssooidcClient, cfg, startUrl, []string{GrantTypeDeviceCode, GrantTypeRefreshToken})
+	reg, err := getOrRegisterClient(ctx, ssooidcClient, cfg, startUrl, []string{GrantTypeDeviceCode, GrantTypeRefreshToken}, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -250,15 +284,19 @@ func SSODeviceCodeFlowFromStartUrl(ctx context.Context, cfg aws.Config, startUrl
 		return nil, err
 	}
 
+	return newSSOTokenFromResponse(token, reg, cfg.Region), nil
+}
+
+func newSSOTokenFromResponse(token *ssooidc.CreateTokenOutput, reg *securestorage.ClientRegistration, region string) *securestorage.SSOToken {
 	return &securestorage.SSOToken{
 		AccessToken:           aws.ToString(token.AccessToken),
 		Expiry:                time.Now().Add(time.Duration(token.ExpiresIn) * time.Second),
 		ClientID:              reg.ClientID,
 		ClientSecret:          reg.ClientSecret,
 		RegistrationExpiresAt: reg.RegistrationExpiresAt,
-		Region:                cfg.Region,
+		Region:                region,
 		RefreshToken:          token.RefreshToken,
-	}, nil
+	}
 }
 
 var ErrTimeout error = errors.New("polling for device authorization token timed out")
