@@ -7,38 +7,27 @@ import (
 	"strings"
 
 	"github.com/AndreZiviani/aws-fuzzy/internal/ssm_plugin"
-	"github.com/AndreZiviani/aws-fuzzy/internal/sso"
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	awsssm "github.com/aws/aws-sdk-go-v2/service/ssm"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
-func NewPortForward(profile, region, ports string) *PortForward {
+func NewPortForward(profile, region, ports, instance string, nonInteractive bool) *PortForward {
 	pf := PortForward{
-		Profile: profile,
-		Region:  region,
-		Ports:   ports,
+		Profile:        profile,
+		Region:         region,
+		Ports:          ports,
+		Instance:       instance,
+		NonInteractive: nonInteractive,
 	}
 
 	return &pf
 }
 
-func (p *PortForward) DoPortForward(ctx context.Context, id, local, host, remote string) error {
+func (p *PortForward) DoPortForward(ctx context.Context, cfg aws.Config, id, local, host, remote string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ssmportforward")
 	defer span.Finish()
-
-	login := sso.Login{Profile: p.Profile}
-	creds, err := login.GetCredentials(ctx)
-	if err != nil {
-		return err
-	}
-
-	cfg, err := sso.NewAwsConfig(ctx, creds, config.WithRegion(p.Region))
-	if err != nil {
-		return err
-	}
 
 	docName := docPortForwardRemoteHost
 	input := &awsssm.StartSessionInput{
@@ -106,31 +95,26 @@ func (p *PortForward) Execute(ctx context.Context) error {
 	tracer := opentracing.GlobalTracer()
 	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssm")
 
-	login := sso.Login{Profile: p.Profile}
+	ports := strings.Split(p.Ports, ":")
+	if len(ports) != 3 {
+		return fmt.Errorf("invalid --ports %q, expected '<local port>:<remote host>:<remote port>'", p.Ports)
+	}
 
-	creds, err := login.GetCredentials(ctx)
+	if err := validateTarget(p.Instance, p.NonInteractive); err != nil {
+		return err
+	}
+
+	cfg, err := newConfig(ctx, p.Profile, p.Region)
 	if err != nil {
 		return err
 	}
 
-	cfg, err := sso.NewAwsConfig(ctx, creds, config.WithRegion(p.Region))
-	if err != nil {
-		return err
-	}
-
-	instances, err := GetInstances(ctx, cfg)
+	instance, err := resolveInstance(ctx, cfg, p.Instance, p.NonInteractive)
 	if err != nil {
 		return err
 	}
 
 	span.Finish()
 
-	instance, err := tui(instances)
-	if err != nil {
-		return err
-	}
-
-	ports := strings.Split(p.Ports, ":")
-
-	return p.DoPortForward(ctx, aws.ToString(instance.InstanceId), ports[0], ports[1], ports[2])
+	return p.DoPortForward(ctx, cfg, aws.ToString(instance.InstanceId), ports[0], ports[1], ports[2])
 }

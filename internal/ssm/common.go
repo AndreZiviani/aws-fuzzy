@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/AndreZiviani/aws-fuzzy/internal/sso"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	awsssm "github.com/aws/aws-sdk-go-v2/service/ssm"
@@ -16,28 +18,53 @@ import (
 const (
 	docPortForwardRemoteHost = "AWS-StartPortForwardingSessionToRemoteHost"
 	docInteractiveCommand    = "AWS-StartInteractiveCommand"
+	docRunShellScript        = "AWS-RunShellScript"
 )
 
+// newConfig builds an AWS config for the given profile and region, logging in
+// via SSO if needed.
+func newConfig(ctx context.Context, profile, region string) (aws.Config, error) {
+	login := sso.Login{Profile: profile}
 
-func GetInstances(ctx context.Context, cfg aws.Config) (*ec2.DescribeInstancesOutput, error) {
+	creds, err := login.GetCredentials(ctx)
+	if err != nil {
+		return aws.Config{}, err
+	}
+
+	return sso.NewAwsConfig(ctx, creds, config.WithRegion(region))
+}
+
+// GetInstances lists running EC2 instances that are registered with SSM and
+// reachable. When instanceIDs is non-empty the SSM lookup is narrowed to those
+// instances instead of enumerating every managed instance in the account.
+func GetInstances(ctx context.Context, cfg aws.Config, instanceIDs []string) (*ec2.DescribeInstancesOutput, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ssmgetinstances")
 	defer span.Finish()
+
+	filters := []awsssmtypes.InstanceInformationStringFilter{
+		{
+			Key:    aws.String("PingStatus"),
+			Values: []string{"Online"},
+		},
+		{
+			Key:    aws.String("AssociationStatus"),
+			Values: []string{"Success"},
+		},
+	}
+
+	if len(instanceIDs) > 0 {
+		filters = append(filters, awsssmtypes.InstanceInformationStringFilter{
+			Key:    aws.String("InstanceIds"),
+			Values: instanceIDs,
+		})
+	}
 
 	ssmclient := awsssm.NewFromConfig(cfg)
 	ssmPag := awsssm.NewDescribeInstanceInformationPaginator(
 		ssmclient,
 		&awsssm.DescribeInstanceInformationInput{
 			MaxResults: aws.Int32(50),
-			Filters: []awsssmtypes.InstanceInformationStringFilter{
-				{
-					Key:    aws.String("PingStatus"),
-					Values: []string{"Online"},
-				},
-				{
-					Key:    aws.String("AssociationStatus"),
-					Values: []string{"Success"},
-				},
-			},
+			Filters:    filters,
 		},
 	)
 	ssmInstances := make([]*awsssm.DescribeInstanceInformationOutput, 0)
@@ -49,7 +76,10 @@ func GetInstances(ctx context.Context, cfg aws.Config) (*ec2.DescribeInstancesOu
 		ssmInstances = append(ssmInstances, tmpInstances)
 	}
 
-	instanceIDs := SSMGetInstanceID(ssmInstances)
+	managedIDs := SSMGetInstanceID(ssmInstances)
+	if len(managedIDs) == 0 {
+		return &ec2.DescribeInstancesOutput{}, nil
+	}
 
 	spanDescribeInstances, ctx := opentracing.StartSpanFromContext(ctx, "ec2getinstances")
 	defer spanDescribeInstances.Finish()
@@ -65,7 +95,7 @@ func GetInstances(ctx context.Context, cfg aws.Config) (*ec2.DescribeInstancesOu
 					Values: []string{"running"},
 				},
 			},
-			InstanceIds: instanceIDs,
+			InstanceIds: managedIDs,
 		},
 	)
 	if err != nil {

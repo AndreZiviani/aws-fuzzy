@@ -139,20 +139,24 @@ type FzfData struct {
 	Instances []Instance
 }
 
-func NewFzfData(instancesOutput *ec2.DescribeInstancesOutput) *FzfData {
-	f := FzfData{}
-
-	f.Instances = make([]Instance, 0)
+// flattenInstances collapses the reservations of a DescribeInstances response
+// into a flat list, so callers can filter it before handing it to the picker.
+func flattenInstances(instancesOutput *ec2.DescribeInstancesOutput) []Instance {
+	instances := make([]Instance, 0)
 
 	for _, r := range instancesOutput.Reservations {
 		for _, i := range r.Instances {
 			tmp := Instance{}
 			tmp.Instance = i // force ec2type.Instance to be my Instance type, see embedded struct doc
-			f.Instances = append(f.Instances, tmp)
+			instances = append(instances, tmp)
 		}
 	}
 
-	return &f
+	return instances
+}
+
+func NewFzfData(instances []Instance) *FzfData {
+	return &FzfData{Instances: instances}
 }
 
 func (f FzfData) FzfInputList() []string {
@@ -216,11 +220,14 @@ func (t *Tui) inputFunc(text string) {
 	boldItem(t.resourceList, t.resourceList.GetCurrentItem())
 }
 
-func tui(instancesOutput *ec2.DescribeInstancesOutput) (*Instance, error) {
+func tui(instances []Instance) (*Instance, error) {
+	if len(instances) == 0 {
+		return nil, fmt.Errorf("no running SSM-managed instance found")
+	}
 
 	t := NewTui()
 
-	fzfInput := NewFzfData(instancesOutput)
+	fzfInput := NewFzfData(instances)
 	t.fzf.SetInput(fzfInput)
 	t.instances = fzfInput.Instances
 	t.instanceIdx = make([]int, len(t.instances))

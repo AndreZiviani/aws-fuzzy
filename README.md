@@ -9,6 +9,7 @@ aws-fuzzy is a tool to retrieve information from multiple AWS services.
 - **AWS Config**: Retrieve inventory information from AWS Config
 - **Chart**: Plot the connection between different AWS components (e.g. VPC Peering)
 - **SSH**: Search EC2 instances using [fuzzy finder](https://github.com/junegunn/fzf)
+- **SSM**: Open a shell, forward a port or run a command on an EC2 instance via SSM Session Manager
 - **SSO**: Login and export AWS credentials as environment variables
 - **Cache**: all results can be optionally cached to improve performance
 
@@ -34,6 +35,7 @@ Available commands:
   chart   Chart
   config  Interact with AWS Config inventory
   ssh     SSH to EC2 instances
+  ssm     Interact with EC2 instances via SSM
   sso     SSO Utilities
 ```
 
@@ -151,6 +153,75 @@ Help Options:
       -u, --user=    Username to use with SSH (default: $USER) [$AWSFUZZY_SSH_USER]
       -k, --key=     Key to use with SSH (default: ~/.ssh/id_rsa) [$AWSFUZZY_SSH_KEY]
 ```
+
+## SSM
+
+Interact with EC2 instances through SSM Session Manager, without needing SSH
+access or a bastion host. Only instances that are running, registered with SSM
+and reachable are listed.
+
+```sh
+Usage:
+  aws-fuzzy [OPTIONS] ssm <command>
+
+Interact with EC2 instances via SSM
+
+Available commands:
+  session      Start a session on a EC2 instance
+  portforward  Start a portforwarding session on a EC2 instance
+  run          Run a command on a EC2 instance and print its output
+```
+
+Every subcommand accepts the same target options:
+
+```sh
+      -p, --profile=          What profile to use (default: $AWS_PROFILE) [$AWSFUZZY_PROFILE, $AWS_PROFILE]
+      -r, --region=           What AWS region to use (default: us-east-1) [$AWS_REGION, $AWS_DEFAULT_REGION]
+      -i, --instance=         Target instance, by instance id, Name tag or private IP
+          --non-interactive   Never open the instance picker, fail instead if the target is
+                              missing or ambiguous
+```
+
+Omit `-i` and you get the fuzzy picker, as before. Pass it and the instance is
+resolved directly:
+
+```sh
+# by instance id, Name tag or private IP
+aws-fuzzy ssm session -i i-0123456789abcdef0
+aws-fuzzy ssm session -i web-prod-1
+aws-fuzzy ssm session -i 10.0.1.5
+```
+
+A query is matched against the instance id, then the private IP, then the
+`Name` tag exactly, then the `Name` tag as a substring — the first of those
+that hits anything wins. If a query matches several instances the picker opens
+containing just those candidates; with `--non-interactive` it fails instead and
+lists their instance ids.
+
+### run
+
+`ssm run` sends a single shell command to one instance, waits for it, prints
+its output and exits with the remote exit code, so it composes with other
+commands in a script:
+
+```sh
+$ aws-fuzzy ssm run -i web-prod-1 -c 'systemctl is-active nginx'
+active
+$ echo $?
+0
+
+$ aws-fuzzy ssm run -i web-prod-1 -c 'exit 3'; echo $?
+3
+```
+
+```sh
+      -c, --command=  Command to run on the remote instance (required)
+          --timeout=  How long to wait for the command to finish, in seconds (default: 60)
+```
+
+A command that exceeds `--timeout` exits `124`, matching `timeout(1)`. SSM
+truncates command output at 24000 bytes; when that happens `run` prints what it
+received and warns on stderr.
 
 ## SSO
 

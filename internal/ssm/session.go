@@ -6,38 +6,27 @@ import (
 	"fmt"
 
 	"github.com/AndreZiviani/aws-fuzzy/internal/ssm_plugin"
-	"github.com/AndreZiviani/aws-fuzzy/internal/sso"
 	"github.com/AndreZiviani/aws-fuzzy/internal/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	awsssm "github.com/aws/aws-sdk-go-v2/service/ssm"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
-func NewSession(profile, region, shell string) *Session {
+func NewSession(profile, region, shell, instance string, nonInteractive bool) *Session {
 	session := Session{
-		Profile: profile,
-		Region:  region,
-		Shell:   shell,
+		Profile:        profile,
+		Region:         region,
+		Shell:          shell,
+		Instance:       instance,
+		NonInteractive: nonInteractive,
 	}
 
 	return &session
 }
 
-func (p *Session) DoSsm(ctx context.Context, id string) error {
+func (p *Session) DoSsm(ctx context.Context, cfg aws.Config, id string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ssmsession")
 	defer span.Finish()
-
-	login := sso.Login{Profile: p.Profile}
-	creds, err := login.GetCredentials(ctx)
-	if err != nil {
-		return err
-	}
-
-	cfg, err := sso.NewAwsConfig(ctx, creds, config.WithRegion(p.Region))
-	if err != nil {
-		return err
-	}
 
 	input := &awsssm.StartSessionInput{
 		Target:       &id,
@@ -102,29 +91,21 @@ func (p *Session) Execute(ctx context.Context) error {
 	tracer := opentracing.GlobalTracer()
 	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "ssm")
 
-	login := sso.Login{Profile: p.Profile}
+	if err := validateTarget(p.Instance, p.NonInteractive); err != nil {
+		return err
+	}
 
-	creds, err := login.GetCredentials(ctx)
+	cfg, err := newConfig(ctx, p.Profile, p.Region)
 	if err != nil {
 		return err
 	}
 
-	cfg, err := sso.NewAwsConfig(ctx, creds, config.WithRegion(p.Region))
-	if err != nil {
-		return err
-	}
-
-	instances, err := GetInstances(ctx, cfg)
+	instance, err := resolveInstance(ctx, cfg, p.Instance, p.NonInteractive)
 	if err != nil {
 		return err
 	}
 
 	span.Finish()
 
-	instance, err := tui(instances)
-	if err != nil {
-		return err
-	}
-
-	return p.DoSsm(ctx, aws.ToString(instance.InstanceId))
+	return p.DoSsm(ctx, cfg, aws.ToString(instance.InstanceId))
 }
